@@ -29,8 +29,9 @@ fi
 
 echo "1. 🖥️ Установка 3x-ui панели"
 echo "2. 🚀 Установка SLK бота (с GitHub)"
-[ $HAS_PANEL -eq 1 ] && echo "3. 🗑️ Удалить 3x-ui панель"
-[ $HAS_BOT -eq 1 ] && echo "4. 🗑️ Удалить SLK бота"
+[ $HAS_BOT -eq 1 ] && echo "3. 🔄 Обновить SLK бота"
+[ $HAS_PANEL -eq 1 ] && echo "4. 🗑️ Удалить 3x-ui панель"
+[ $HAS_BOT -eq 1 ] && echo "5. 🗑️ Удалить SLK бота"
 echo "0. ❌ Выход"
 echo ""
 read -p "Ваш выбор: " MENU_CHOICE
@@ -109,6 +110,17 @@ SVC
     echo "✅ Бот установлен!"
     ;;
   3)
+    if [ $HAS_BOT -eq 1 ]; then
+      echo "🔄 Обновляю SLK бота..."
+      cd /opt/SLV_Bot
+      git pull
+      source venv/bin/activate
+      pip install -r requirements.txt
+      systemctl restart SLV-bot
+      echo "✅ Бот обновлён!"
+    fi
+    ;;
+  4)
     if [ $HAS_PANEL -eq 1 ]; then
       echo "🗑️ Удаляю 3x-ui панель..."
       systemctl stop x-ui 2>/dev/null
@@ -119,7 +131,7 @@ SVC
       echo "✅ Панель удалена!"
     fi
     ;;
-  4)
+  5)
     if [ $HAS_BOT -eq 1 ]; then
       echo "🗑️ Удаляю SLK бота..."
       systemctl stop SLV-bot 2>/dev/null
