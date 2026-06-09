@@ -65,7 +65,7 @@ case $MENU_CHOICE in
         fi
     fi
     
-    git clone https://github.com/elifecomp/slk-telegram-bot.git /opt/SLV_Bot
+    git clone https://elifecomp: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@github.com/elifecomp/slk-telegram-bot.git /opt/SLV_Bot
     echo "✅ Репозиторий склонирован!"
     
     # Python окружение
