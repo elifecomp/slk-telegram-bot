@@ -1517,6 +1517,36 @@ async def del_server(update: Update, context: CallbackContext) -> None:
         await update.message.reply_text("❌ Используйте: /delserver IP", parse_mode='HTML')
 
 
+# ==================== ПРОВЕРКА ОБНОВЛЕНИЙ БОТА ====================
+import asyncio as asyncio_bot_upd
+
+BOT_VERSION = "1.0.1"
+GITHUB_RAW = "https://raw.githubusercontent.com/elifecomp/slk-telegram-bot/main"
+
+async def check_bot_updates():
+    """Проверяет обновления бота на GitHub раз в час"""
+    await asyncio_bot_upd.sleep(10)
+    while True:
+        try:
+            import requests
+            r = requests.get(f"{GITHUB_RAW}/version.txt", timeout=10)
+            if r.status_code == 200:
+                latest = r.text.strip()
+                if latest != BOT_VERSION:
+                    for admin_id in ADMIN_IDS:
+                        try:
+                            await application.bot.send_message(admin_id,
+                                f"🆕 <b>ОБНОВЛЕНИЕ БОТА!</b>\n━━━━━━━━━━━━━━━━━\n"
+                                f"📦 Версия: {latest}\n"
+                                f"📋 Текущая: {BOT_VERSION}\n\n"
+                                f"Выполните для обновления:\n"
+                                f"<code>cd /opt/SLV_Bot && git pull && systemctl restart SLV-bot</code>",
+                                parse_mode='HTML')
+                        except: pass
+        except: pass
+        await asyncio_bot_upd.sleep(3600)
+
+
 async def show_cache(update: Update, context: CallbackContext) -> None:
     """Показывает статистику кэша"""
     if not is_admin(update.effective_user.id):
