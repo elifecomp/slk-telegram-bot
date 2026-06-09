@@ -46,13 +46,6 @@ def create_iphone_links_keyboard():
     ]
     return InlineKeyboardMarkup(keyboard)
 
-def create_personal_cabinet_keyboard():
-    """Создает inline-клавиатуру со ссылкой на личный кабинет"""
-    keyboard = [
-        [InlineKeyboardButton("🏢 ПЕРЕЙТИ В ЛИЧНЫЙ КАБИНЕТ", url=PERSONAL_CABINET_URL)]
-    ]
-    return InlineKeyboardMarkup(keyboard)
-
 def create_cancel_keyboard():
     keyboard = [["❌ Отменить"]]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)

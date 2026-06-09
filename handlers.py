@@ -435,11 +435,6 @@ async def handle_client_message(update: Update, context: CallbackContext) -> Non
     admin_msg += f"📝 <b>Логин:</b> <code>{client['login']}</code>\n"
     admin_msg += f"📞 <b>Телефон:</b> <code>{client['phone']}</code>\n" + (f"📶 <b>Сим-карта:</b> {get_operator(client.get('phone', '')).replace(' | 📶 ', '')}\n" if get_operator(client.get('phone', '')) else "")
     admin_msg += f"🆔 <b>Telegram ID:</b> <code>{user.id}</code>\n"
-    vk_id = client.get('vk_id')
-    if vk_id:
-        admin_msg += f"📱 <b>VK:</b> привязан (<code>{vk_id}</code>)\n"
-    else:
-        admin_msg += f"📱 <b>VK:</b> не привязан\n"
     admin_msg += f"📅 <b>Дата:</b> {now.day} {months[now.month-1]} {now.year}\n"
     admin_msg += f"🕐 <b>Время:</b> {now.strftime('%H:%M')}\n"
     admin_msg += f"━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -548,7 +543,9 @@ async def handle_group_message(update: Update, context: CallbackContext) -> None
     for client in clients:
         try:
             await context.bot.send_message(
-                parse_mode=HTML
+                client['telegram_id'],
+                f"💌 <b>Сообщение от SLK</b>\n\n{message_text}\n\n📁 Группа: {group['name']}",
+                parse_mode='HTML'
             )
             sent += 1
         except:
@@ -2243,11 +2240,6 @@ async def handle_client_button(update: Update, context: CallbackContext) -> None
         if tg_id and tg_id != '0' and tg_id != '':
             message += f"🆔 <b>Telegram ID:</b> <code>{tg_id}</code>\n"
         else:
-            vk_id = db_client.get('vk_id') if db_client else None
-            if vk_id:
-                message += f"📱 <b>VK:</b> привязан (<code>{vk_id}</code>)\n"
-            else:
-                message += f"📱 <b>VK:</b> не привязан\n"
             message += f"🆔 <b>Telegram ID:</b> ❌ Не привязан\n"
         
         # Кнопка Назад
@@ -3581,14 +3573,6 @@ async def user_detail(update: Update, context: CallbackContext) -> None:
         import sqlite3
         conn = sqlite3.connect('clients.db')
         cur = conn.cursor()
-        cur.execute("SELECT vk_id FROM clients WHERE id = ?", (selected_user['id'],))
-        row = cur.fetchone()
-        conn.close()
-        vk_id = row[0] if row else None
-        if vk_id:
-            message += f"📱 <b>VK:</b> привязан (<code>{vk_id}</code>)\n"
-        else:
-            message += f"📱 <b>VK:</b> не привязан\n"
         message += f"🆔 <b>ID в базе:</b> {selected_user['id']}\n"
         message += f"👤 <b>Имя:</b> {selected_user['name']}\n"
         message += f"📝 <b>Логин:</b> <code>{selected_user['login']}</code>\n"
@@ -5043,174 +5027,6 @@ async def open_web_app(update: Update, context: CallbackContext) -> None:
         parse_mode=HTML
     )
 
-async def personal_cabinet(update: Update, context: CallbackContext) -> None:
-    """Открывает ссылку на личный кабинет"""
-    user = update.effective_user
-    client = db.get_client_by_telegram_id(user.id)
-    
-    if not client:
-        await update.message.reply_text("❌ <b>Вы не зарегистрированы в системе</b>", parse_mode=HTML)
-        return
-    
-    
-    
-    message = "🏢 <b>Личный кабинет</b>\n\n"
-    message += "👤 Для входа используйте ваш номер телефона:\n"
-    message += f"📞 <code>{client['phone']}</code>\n\n"
-    message += "👇 Нажмите чтобы открыть:"
-    
-    from keyboards import create_personal_cabinet_keyboard
-    await update.message.reply_text(
-        message, 
-        reply_markup=create_personal_cabinet_keyboard(),
-        parse_mode=HTML
-    )
-
-async def my_subscription(update: Update, context: CallbackContext) -> None:
-    """Показывает ВСЕ подписки пользователя по tgId и логинам"""
-    user = update.effective_user
-    client = db.get_client_by_telegram_id(user.id)
-    
-    if not client:
-        await update.message.reply_text("❌ <b>Вы не зарегистрированы</b>", parse_mode=HTML)
-        return
-    
-    await update.message.reply_text("🔄 <b>Ищу все ваши подписки на всех панелях...</b>", parse_mode=HTML)
-    
-    def get_all_subs():
-        try:
-            from panel_manager import get_panels_list, set_active_panel, get_active_panel
-            from xui_api import get_inbounds_list
-            from datetime import datetime
-            
-            panels = get_panels_list()
-            original = get_active_panel()['id']
-            results = []
-            found_emails = set()
-            
-            search_logins = [client['login']]
-            if client.get('login2'):
-                search_logins.append(client['login2'])
-            
-            for panel in panels:
-                set_active_panel(panel['id'])
-                inbounds = get_inbounds_list()
-                
-                for inbound in inbounds:
-                    settings = inbound.get('settings', {})
-                    if isinstance(settings, str):
-                        import json
-                        try:
-                            settings = json.loads(settings) if settings.strip() else {}
-                        except:
-                            settings = {}
-                    
-                    if isinstance(settings, dict):
-                        for c in settings.get('clients', []):
-                            email = c.get('email', '')
-                            tg_id = str(c.get('tgId', ''))
-                            
-                            found = False
-                            if email in search_logins:
-                                found = True
-                            elif tg_id and tg_id == str(user.id):
-                                found = True
-                            
-                            key = f"{panel['id']}_{email}"
-                            if found and key not in found_emails:
-                                found_emails.add(key)
-                                info = {
-                                    'panel': panel['name'],
-                                    'emoji': panel['emoji'],
-                                    'inbound': inbound.get('remark', '?').strip(),
-                                    'protocol': inbound.get('protocol', '?').upper(),
-                                    'port': inbound.get('port', '?'),
-                                    'expiry': c.get('expiryTime', 0),
-                                    'total_gb': c.get('totalGB', 0),
-                                    'enable': c.get('enable', True),
-                                    'flow': c.get('flow', ''),
-                                    'email': email,
-                                }
-                                for cs in inbound.get('clientStats', []):
-                                    if cs.get('email') == email:
-                                        info['up'] = cs.get('up', 0)
-                                        info['down'] = cs.get('down', 0)
-                                        break
-                                results.append(info)
-            
-            set_active_panel(original)
-            return results
-        except Exception as e:
-            logger.error(f"Error: {e}")
-            return []
-    
-    with ThreadPoolExecutor() as executor:
-        future = executor.submit(get_all_subs)
-        results = future.result()
-    
-    if results:
-        total_up = 0
-        total_down = 0
-        
-        message = "📋 <b>МОИ ПОДПИСКИ</b>\n\n"
-        message += f"👤 <b>Telegram ID:</b> <code>{user.id}</code>\n"
-        message += f"🔍 <b>Найдено подписок:</b> {len(results)}\n"
-        message += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        
-        for i, sub in enumerate(results, 1):
-            message += f"{sub['emoji']} <b>{sub['panel']}</b>\n"
-            message += f"  📝 <b>Логин:</b> <code>{sub['email']}</code>\n"
-            message += f"  📡 <b>Инбаунд:</b> {sub['inbound']}\n"
-            message += f"  🔌 <b>Протокол:</b> {sub['protocol']}:{sub['port']}\n"
-            message += f"  🌊 <b>Flow:</b> {sub['flow']}\n"
-            message += f"  🔒 <b>Статус:</b> {'🟢 Активна' if sub['enable'] else '🔴 Отключена'}\n\n"
-            
-            up = sub.get('up', 0)
-            down = sub.get('down', 0)
-            
-            message += f"  📊 <b>Трафик:</b>\n"
-            message += f"    ⬆️ Отправлено: {format_traffic(up)}\n"
-            message += f"    ⬇️ Получено: {format_traffic(down)}\n"
-            message += f"    📊 Всего: {format_traffic(up + down)}"
-            
-            total = sub.get('total_gb', 0)
-            if total > 0:
-                pct = (up + down) / total * 100 if total > 0 else 0
-                message += f"\n    📈 Лимит: {format_traffic(total)} ({pct:.1f}%)"
-            else:
-                message += "\n    📈 Лимит: ♾️ Безлимит"
-            
-            expiry = sub.get('expiry', 0)
-            if expiry > 0:
-                from datetime import datetime
-                dt = datetime.fromtimestamp(expiry / 1000)
-                days = (expiry / 1000 - datetime.now().timestamp()) / 86400
-                message += f"\n  ⏰ <b>Срок:</b> {dt.strftime('%d.%m.%Y')}"
-                if days > 0:
-                    message += f" (осталось {int(days)} дн.)"
-                else:
-                    message += " ❌ Истекла"
-            else:
-                message += f"\n  ⏰ <b>Срок:</b> ♾️ Бессрочно"
-            
-            message += "\n"
-            message += "─" * 30 + "\n\n"
-            total_up += up
-            total_down += down
-        
-
-        
-        await update.message.reply_text(message, parse_mode=HTML)
-    else:
-        await update.message.reply_text(
-            f"❌ <b>Подписки не найдены</b>\n\n"
-            f"Пользователь с ID <code>{user.id}</code> не имеет активных подписок ни на одной панели.\n\n"
-            f"<i>Обратитесь к администратору для добавления подписки.</i>",
-            parse_mode=HTML
-        )
-
-
-
 async def show_direct_keys_handler(update: Update, context: CallbackContext) -> None:
     """Показывает прямые ключи по нажатию кнопки"""
     query = update.callback_query
@@ -5241,36 +5057,6 @@ async def handle_copy_callback(update: Update, context: CallbackContext) -> None
     elif "copy_id_" in data:
         tg_id = data.replace("copy_id_", "")
         await query.message.reply_text("🆔 <b>Telegram ID:</b>\n<code>" + tg_id + "</code>", parse_mode=HTML)
-
-
-
-async def vk_link(update: Update, context: CallbackContext) -> None:
-    """Кнопка ВК — открывает ссылку"""
-    user = update.effective_user
-    client = db.get_client_by_telegram_id(user.id)
-    
-    if not client:
-        await update.message.reply_text("❌ <b>Вы не зарегистрированы</b>", parse_mode=HTML)
-        return
-    
-    from telegram import WebAppInfo
-    
-    keyboard = [[InlineKeyboardButton(
-        "🇷🇺 Открыть ВКонтакте",
-        url="https://vk.ru/invite/TOwz94k"
-    )]]
-    
-    await update.message.reply_text(
-        "🇷🇺 <b>БОТ ВКОНТАКТЕ</b>\n\n"
-        "1️⃣ Перейдите по ссылке\n"
-        "2️⃣ Вступите в сообщество\n"
-        "3️⃣ Нажмите «Сообщение»\n"
-        "4️⃣ Следуйте указаниям\n\n"
-        "👇 <b>Нажмите кнопку чтобы открыть:</b>",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode=HTML
-    )
-
 
 
 
@@ -5669,10 +5455,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
                 "🛡️ Статус VPN": vpn_status,
                 "🆔 Мой ID": get_telegram_id,
                 
-                "🇷🇺 ВК": vk_link,
-                "🇷🇺 ВК": vk_link,
                 "🤖 AI Помощник": ai_help,
-                "📋 Моя подписка": my_subscription,
                 "💬 Написать админу": write_to_admin,
             }
             
@@ -5724,11 +5507,8 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
                 "📱 Приложение": app_info,
                 "🛡️ Статус VPN": vpn_status,
                 "🆔 Мой ID": get_telegram_id,
-                "🇷🇺 ВК": vk_link,
-                "🇷🇺 ВК": vk_link,
                 "🤖 AI Помощник": ai_help,
                 
-                "📋 Моя подписка": my_subscription,
                 "💬 Написать админу": write_to_admin,
             }
             
