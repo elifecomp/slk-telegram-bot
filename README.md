@@ -4,8 +4,10 @@
 
 ## 🚀 Установка
 
-Одной командой:
-bash <(curl -s https://raw.githubusercontent.com/elifecomp/slk-telegram-bot/main/setup.sh)
+**Одной командой (скопируйте и вставьте в терминал):**
 
-## 👨‍💻 Автор
+```bash
+bash <(curl -s https://raw.githubusercontent.com/elifecomp/slk-telegram-bot/main/setup.sh)
+👨‍💻 Автор
+
 Кардан-СТ
