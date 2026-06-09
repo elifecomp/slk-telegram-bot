@@ -1080,7 +1080,7 @@ async def create_backup(update: Update, context: CallbackContext) -> None:
         name = f"SLV_bot_FINAL_{time.strftime("%Y%m%d_%H%M%S")}.tar.gz"
         path = f"/opt/SLV_Bot/backups/{name}"
         result = subprocess.run(
-            f"cd / && tar -czf {path} --exclude=venv --exclude=__pycache__ --exclude='*.pyc' --exclude=logs opt/SLV_Bot/*.py opt/SLV_Bot/.env opt/SLV_Bot/*.db opt/SLV_Bot/*.mp3 opt/SLV_Bot/*.sh opt/SLV_Bot/*.txt etc/systemd/system/SLV-bot.service etc/systemd/system/slv-webpages.service etc/systemd/system/slv-client.service",
+            f"cd / && tar -czf {path} --exclude=venv --exclude=__pycache__ --exclude='*.pyc' --exclude=logs opt/SLV_Bot/*.py opt/SLV_Bot/.env opt/SLV_Bot/*.db opt/SLV_Bot/*.mp3 opt/SLV_Bot/*.sh opt/SLV_Bot/*.txt etc/systemd/system/SLV-bot.service ",
             shell=True, capture_output=True, timeout=60
         )
         if result.returncode == 0:
@@ -1545,6 +1545,36 @@ async def check_bot_updates():
                         except: pass
         except: pass
         await asyncio_bot_upd.sleep(3600)
+
+
+async def check_bot_update_manual(update: Update, context: CallbackContext) -> None:
+    """Ручная проверка обновлений бота"""
+    if not is_admin(update.effective_user.id):
+        return
+    
+    await update.message.reply_text("🔄 <b>Проверяю обновления бота...</b>", parse_mode='HTML')
+    
+    import requests
+    try:
+        r = requests.get(f"{GITHUB_RAW}/version.txt", timeout=10)
+        if r.status_code == 200:
+            latest = r.text.strip()
+            if latest != BOT_VERSION:
+                await update.message.reply_text(
+                    f"🆕 <b>ДОСТУПНО ОБНОВЛЕНИЕ!</b>\n━━━━━━━━━━━━━━━━━\n"
+                    f"📦 Новая версия: {latest}\n"
+                    f"📋 Текущая: {BOT_VERSION}\n\n"
+                    f"Для обновления выполните:\n"
+                    f"<code>cd /opt/SLV_Bot && git pull && systemctl restart SLV-bot</code>",
+                    parse_mode='HTML')
+            else:
+                await update.message.reply_text(
+                    f"✅ <b>У вас актуальная версия:</b> {BOT_VERSION}",
+                    parse_mode='HTML')
+        else:
+            await update.message.reply_text("❌ Не удалось проверить обновления", parse_mode='HTML')
+    except:
+        await update.message.reply_text("❌ Ошибка подключения к GitHub", parse_mode='HTML')
 
 
 async def show_cache(update: Update, context: CallbackContext) -> None:
@@ -5439,6 +5469,9 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
             await delete_backups(update, context)
         elif message_text == "📋 Список бэкапов":
             await list_backups(update, context)
+        elif message_text == "🔄 Обновление бота":
+            await check_bot_update_manual(update, context)
+            return
         elif message_text == "💾 Бэкап":
             await create_backup(update, context)
         elif message_text == "🆕 Что нового":

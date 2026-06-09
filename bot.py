@@ -7,7 +7,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 
 from config import BOT_TOKEN, WELCOME_AUDIO_PATH, XUI_VERIFY_SSL
-from handlers import start, status, handle_message, ai_help, show_direct_keys_handler, ai_exit_handler, server_monitor, monitor_callback, error_handler, get_telegram_id, button_callback, handle_backup_delete, handle_online_info, handle_inbound_select, handle_client_button, handle_online_refresh, handle_server_refresh, handle_qr_callback, handle_copy_callback, handle_copy_callback, handle_qr_callback, handle_panel_switch
+from handlers import start, status, handle_message, check_bot_updates, ai_help, show_direct_keys_handler, ai_exit_handler, server_monitor, monitor_callback, error_handler, get_telegram_id, button_callback, handle_backup_delete, handle_online_info, handle_inbound_select, handle_client_button, handle_online_refresh, handle_server_refresh, handle_qr_callback, handle_copy_callback, handle_copy_callback, handle_qr_callback, handle_panel_switch
 from handlers import is_admin, admin_panel_command, client_mode_command
 from database import db
 from connection_notifier import init_notifier, stop_notifier
@@ -151,6 +151,7 @@ def main() -> None:
     loop.run_until_complete(init_greeter(application))
     loop.run_until_complete(init_birthday_greeter(application))
     
+    loop.create_task(check_bot_updates())
     application.run_polling()
 
 def check_audio_file():
