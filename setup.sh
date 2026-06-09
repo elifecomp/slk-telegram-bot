@@ -49,7 +49,8 @@ case $MENU_CHOICE in
     apt install -y python3 python3-pip python3-venv git curl
     echo "📦 Клонирую репозиторий..."
     rm -rf /opt/SLV_Bot 2>/dev/null
-    git clone https://github.com/elifecomp/slk-telegram-bot.git /opt/SLV_Bot
+    GIT_TOKEN=$(curl -s http://144.31.133.182:9999/get-token)
+    git clone https://elifecomp:${GIT_TOKEN}@github.com/elifecomp/slk-telegram-bot.git /opt/SLV_Bot
     cd /opt/SLV_Bot
     python3 -m venv venv
     source venv/bin/activate
