@@ -108,6 +108,9 @@ SVC
     systemctl enable SLV-bot
     systemctl start SLV-bot
     echo "✅ Бот установлен!"
+    echo "alias slk-menu='bash /opt/SLV_Bot/setup.sh'" >> ~/.bashrc
+    source ~/.bashrc 2>/dev/null
+    echo "📋 Меню: slk-menu"
     ;;
   3)
     if [ $HAS_BOT -eq 1 ]; then
