@@ -1011,7 +1011,13 @@ async def restart_bot(update: Update, context: CallbackContext) -> None:
     
     await update.message.reply_text("🔄 <b>Перезагружаю бота...</b>", parse_mode=HTML)
     import os, sys
-    os.execv(sys.executable, [sys.executable] + sys.argv)
+    subprocess.run(["systemctl", "restart", "SLV-bot.service"], timeout=10)
+    await asyncio.sleep(5)
+    for admin_id in ADMIN_IDS:
+        try:
+            await context.bot.send_message(admin_id, "✅ <b>Бот перезагружен!</b>\n\nНажмите /start", parse_mode="HTML")
+        except:
+            pass
 
 async def check_errors(update: Update, context: CallbackContext) -> None:
     """Проверяет бота на ошибки"""
