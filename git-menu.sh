@@ -49,6 +49,15 @@ while true; do
             git commit -m "v$ver - $changes"
             git tag -a "v$ver" -m "v$ver - $changes"
             git push && git push --tags
+            
+            # Создаём GitHub Release
+            echo "📦 Создаю GitHub Release..."
+            TOKEN=$(git remote get-url origin | sed 's|.*://||; s|@github.com.*||; s|.*:||')
+            curl -s -X POST https://api.github.com/repos/elifecomp/slk-telegram-bot/releases \
+                -H "Authorization: token $TOKEN" \
+                -H "Accept: application/vnd.github.v3+json" \
+                -d "{\"tag_name\":\"v$ver\",\"name\":\"v$ver\",\"body\":\"$changes\",\"draft\":false,\"prerelease\":false}" > /dev/null
+            echo "✅  GitHub Release создан!"
             systemctl restart SLV-bot
             echo "✅ Релиз v$ver выпущен!"
             read -p "Enter..."

@@ -1316,7 +1316,7 @@ async def del_server(update: Update, context: CallbackContext) -> None:
 # ==================== ПРОВЕРКА ОБНОВЛЕНИЙ БОТА ====================
 import asyncio as asyncio_bot_upd
 
-BOT_VERSION = "v1.3.8"
+BOT_VERSION = "v1.3.11"
 GITHUB_RAW = "https://raw.githubusercontent.com/elifecomp/slk-telegram-bot/main"
 
 async def check_bot_updates():
