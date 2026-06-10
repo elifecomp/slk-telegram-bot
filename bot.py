@@ -7,7 +7,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 
 from config import BOT_TOKEN, WELCOME_AUDIO_PATH, XUI_VERIFY_SSL
-from handlers import start, status, handle_message, check_bot_updates, ai_help, show_direct_keys_handler, ai_exit_handler, server_monitor, monitor_callback, error_handler, get_telegram_id, button_callback, handle_backup_delete, handle_online_info, handle_inbound_select, handle_client_button, handle_online_refresh, handle_server_refresh, handle_qr_callback, handle_copy_callback, handle_copy_callback, handle_qr_callback, handle_panel_switch
+from handlers import start, status, BOT_VERSION, handle_message, check_bot_updates, ai_help, show_direct_keys_handler, ai_exit_handler, server_monitor, monitor_callback, error_handler, get_telegram_id, button_callback, handle_backup_delete, handle_online_info, handle_inbound_select, handle_client_button, handle_online_refresh, handle_server_refresh, handle_qr_callback, handle_copy_callback, handle_copy_callback, handle_qr_callback, handle_panel_switch
 from handlers import is_admin, admin_panel_command, client_mode_command
 from database import db
 from connection_notifier import init_notifier, stop_notifier
@@ -151,7 +151,39 @@ def main() -> None:
     loop.run_until_complete(init_greeter(application))
     loop.run_until_complete(init_birthday_greeter(application))
     
+    # Запускаем фоновую проверку обновлений
     loop.create_task(check_bot_updates())
+    
+    # Проверяем обновления сразу при старте
+    async def startup_update_check():
+        await asyncio.sleep(5)
+        try:
+            import requests
+            r = requests.get(
+                "https://api.github.com/repos/elifecomp/slk-telegram-bot/releases/latest",
+                timeout=10
+            )
+            if r.status_code == 200:
+                release = r.json()
+                latest = release.get('tag_name', '')
+                if latest != BOT_VERSION:
+                    body = release.get('body', '')[:300]
+                    date = release.get('published_at', '')[:10]
+                    msg = f"🔔 <b>НОВЫЙ РЕЛИЗ БОТА SLK!</b>\n━━━━━━━━━━━━━━━━━\n"
+                    msg += f"📦 Версия: {latest}\n"
+                    msg += f"📅 Дата: {date}\n"
+                    msg += f"📋 Текущая: {BOT_VERSION}\n\n"
+                    if body:
+                        msg += f"{body[:300]}\n\n"
+                    msg += f"Для обновления: <code>slk-menu</code> → Обновить"
+                    from config import ADMIN_IDS
+                    for admin_id in ADMIN_IDS:
+                        try:
+                            await application.bot.send_message(admin_id, msg, parse_mode='HTML')
+                        except: pass
+        except: pass
+    loop.create_task(startup_update_check())
+    
     application.run_polling()
 
 def check_audio_file():

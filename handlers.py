@@ -1316,72 +1316,82 @@ async def del_server(update: Update, context: CallbackContext) -> None:
 # ==================== ПРОВЕРКА ОБНОВЛЕНИЙ БОТА ====================
 import asyncio as asyncio_bot_upd
 
-BOT_VERSION = "1.3.8"
+BOT_VERSION = "v1.3.8"
 GITHUB_RAW = "https://raw.githubusercontent.com/elifecomp/slk-telegram-bot/main"
 
 async def check_bot_updates():
     """Проверяет обновления бота на GitHub раз в час"""
-    await asyncio_bot_upd.sleep(10)
+    await asyncio_bot_upd.sleep(3)  # Быстрая проверка при старте
     while True:
         try:
             import requests
-            r = requests.get(f"{GITHUB_RAW}/version.txt", timeout=10)
+            r = requests.get(
+                "https://api.github.com/repos/elifecomp/slk-telegram-bot/releases/latest",
+                timeout=10
+            )
             if r.status_code == 200:
-                latest = r.text.strip()
+                release = r.json()
+                latest = release.get('tag_name', '')
                 if latest != BOT_VERSION:
+                    body = release.get('body', '')[:300]
+                    date = release.get('published_at', '')[:10]
+                    msg = f"🔔 <b>НОВЫЙ РЕЛИЗ БОТА SLK!</b>\n━━━━━━━━━━━━━━━━━\n"
+                    msg += f"📦 Версия: {latest}\n"
+                    msg += f"📅 Дата: {date}\n"
+                    msg += f"📋 Текущая: {BOT_VERSION}\n\n"
+                    if body:
+                        msg += f"{body[:300]}\n\n"
+                    msg += f"Для обновления: <code>slk-menu</code> → Обновить"
                     for admin_id in ADMIN_IDS:
                         try:
-                            await application.bot.send_message(admin_id,
-                                f"🆕 <b>ОБНОВЛЕНИЕ БОТА!</b>\n━━━━━━━━━━━━━━━━━\n"
-                                f"📦 Версия: {latest}\n"
-                                f"📋 Текущая: {BOT_VERSION}\n\n"
-                                f"Выполните для обновления:\n"
-                                f"<code>cd /opt/SLV_Bot && git pull && systemctl restart SLV-bot</code>",
-                                parse_mode='HTML')
+                            await application.bot.send_message(admin_id, msg, parse_mode='HTML')
                         except: pass
         except: pass
         await asyncio_bot_upd.sleep(3600)
 
 
 async def check_bot_update_manual(update: Update, context: CallbackContext) -> None:
-    """Ручная проверка обновлений бота с выводом изменений (приватный репо)"""
+    """Ручная проверка обновлений бота через GitHub API"""
     if not is_admin(update.effective_user.id):
         return
-    
     await update.message.reply_text("🔄 <b>Проверяю обновления...</b>", parse_mode='HTML')
-    
-    import requests, re
+    import requests
     try:
-        r = requests.get(f"{GITHUB_RAW}/version.txt", timeout=10)
+        r = requests.get(
+            "https://api.github.com/repos/elifecomp/slk-telegram-bot/releases/latest",
+            timeout=10
+        )
         if r.status_code == 200:
-            latest = r.text.strip()
+            release = r.json()
+            latest = release.get('tag_name', '')
+            body = release.get('body', '')[:800]
+            date = release.get('published_at', '')[:10]
+            
+            msg = f"🆕 <b>ОБНОВЛЕНИЯ БОТА SLK</b>\n\n"
+            msg += f"📦 У вас: {BOT_VERSION}\n"
+            msg += f"🆕 Доступна: {latest}\n\n"
+            msg += f"📋 <b>{latest}</b> ({date})\n"
+            
+            for line in body.split('\n'):
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    if line.startswith('•') or line.startswith('-'):
+                        msg += f"  {line}\n"
+                    elif line[0] in '🚀🧹📦⚡💪🔧✅':
+                        msg += f"\n{line}\n"
+                    elif len(line) > 5:
+                        msg += f"  • {line}\n"
+            
+            msg += f"\n<i>Данные с GitHub</i>"
+            
             if latest != BOT_VERSION:
-                r2 = requests.get(f"{GITHUB_RAW}/CHANGELOG.md", timeout=10)
-                changes_text = ""
-                if r2.status_code == 200:
-                    changelog_text = r2.text
-                    pattern = f"## v{latest}.*?\n(.*?)(?=\n## v|\Z)"
-                    match = re.search(pattern, changelog_text, re.DOTALL)
-                    if match:
-                        changes_text = match.group(1).strip()[:500]
-                
-                msg = f"🆕 <b>ДОСТУПНО ОБНОВЛЕНИЕ!</b>\n━━━━━━━━━━━━━━━━━\n"
-                msg += f"📦 Новая версия: {latest}\n"
-                msg += f"📋 Текущая: {BOT_VERSION}\n\n"
-                if changes_text:
-                    msg += f"📝 <b>Что нового:</b>\n{changes_text}\n\n"
-                msg += f"Для обновления:\n<code>slk-menu</code> → Обновить"
-                
-                await update.message.reply_text(msg, parse_mode='HTML')
-            else:
-                await update.message.reply_text(
-                    f"✅ <b>У вас актуальная версия:</b> {BOT_VERSION}",
-                    parse_mode='HTML')
+                msg += f"\n\n🔄 Для обновления:\n<code>slk-menu</code> → Обновить"
+            
+            await update.message.reply_text(msg, parse_mode='HTML')
         else:
-            await update.message.reply_text("❌ Не удалось проверить обновления", parse_mode='HTML')
-    except:
-        await update.message.reply_text("❌ Ошибка подключения к GitHub", parse_mode='HTML')
-
+            await update.message.reply_text("❌  Не удалось проверить обновления", parse_mode='HTML')
+    except Exception as e:
+        await update.message.reply_text(f"❌  Ошибка подключения к GitHub", parse_mode='HTML')
 
 async def show_cache(update: Update, context: CallbackContext) -> None:
     """Показывает статистику кэша"""
