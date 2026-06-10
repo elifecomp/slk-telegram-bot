@@ -6,3 +6,4 @@ backups/
 *.db
 .env
 .env.bak
+servers.txt
