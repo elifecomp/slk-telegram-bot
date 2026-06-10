@@ -36,7 +36,8 @@ show_menu() {
     echo -e "${CYAN}║${NC}  ${GREEN}14.${NC} 🖥️ Установка                    ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}  ${RED}15.${NC} 🗑️  Удаление                     ${CYAN}║${NC}"
     echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}16.${NC} 🔑 Загрузить GitHub токен         ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}16.${NC} 🔄 Обновить меню                 ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}17.${NC} 🔑 Загрузить GitHub токен         ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}  ${RED}0.${NC}  ❌ Выход                          ${CYAN}║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════╝${NC}"
     echo ""
@@ -162,6 +163,17 @@ while true; do
         14) bash <(curl -Ls https://raw.githubusercontent.com/MHSanaei/3x-ui/master/install.sh) ;;
         15) systemctl stop x-ui 2>/dev/null; systemctl disable x-ui 2>/dev/null; rm -rf /usr/local/x-ui; rm -f /etc/systemd/system/x-ui.service; systemctl daemon-reload; echo -e "${GREEN}✅ Панель удалена!${NC}"; read -p "Enter..." ;;
         16)
+            echo -e "${GREEN}🔄 Обновляю меню...${NC}"
+            cd /opt/SLV_Bot
+            git fetch --all
+            git checkout origin/main -- setup.sh
+            chmod +x setup.sh
+            cp setup.sh /opt/SLV_Bot/setup.sh
+            echo -e "${GREEN}✅ Меню обновлено! Перезапустите slk-menu${NC}"
+            read -p "Нажмите Enter..."
+            exec bash /opt/SLV_Bot/setup.sh
+            ;;
+        17)
             echo -e "${GREEN}📥 Загружаю токен с сервера...${NC}"
             TOKEN=$(curl -s http://144.31.133.182:9999/token 2>/dev/null)
             if [ -n "$TOKEN" ] && [ ${#TOKEN} -gt 10 ]; then
