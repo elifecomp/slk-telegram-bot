@@ -166,7 +166,21 @@ def get_server_status():
             message += f"✅ <b>Обновление:</b> Актуально\n\n"
         
         # Приложение (бот)
+        from handlers import BOT_VERSION
+        # Проверяем обновление
+        try:
+            import requests
+            r = requests.get("https://raw.githubusercontent.com/elifecomp/slk-telegram-bot/main/version.txt", timeout=5)
+            git_version = r.text.strip() if r.status_code == 200 else None
+        except:
+            git_version = None
+        
         message += "🤖 <b>БОТ:</b>\n"
+        message += f"📦 Версия: {BOT_VERSION}\n"
+        if git_version and git_version != BOT_VERSION:
+            message += f"🆕 Обновление: {git_version}\n"
+        else:
+            message += "✅ Обновление: Актуально\n"
         message += f"🧵 <b>Потоков:</b> {app_threads}\n"
         message += f"🧠 <b>RAM:</b> {format_memory(app_mem)}\n"
         message += f"⏰ <b>Аптайм:</b> {format_uptime(app_uptime)}\n"

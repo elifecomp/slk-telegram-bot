@@ -1548,25 +1548,35 @@ async def check_bot_updates():
 
 
 async def check_bot_update_manual(update: Update, context: CallbackContext) -> None:
-    """Ручная проверка обновлений бота"""
+    """Ручная проверка обновлений бота с выводом изменений"""
     if not is_admin(update.effective_user.id):
         return
     
-    await update.message.reply_text("🔄 <b>Проверяю обновления бота...</b>", parse_mode='HTML')
+    await update.message.reply_text("🔄 <b>Проверяю обновления...</b>", parse_mode='HTML')
     
-    import requests
+    import requests, re
     try:
         r = requests.get(f"{GITHUB_RAW}/version.txt", timeout=10)
         if r.status_code == 200:
             latest = r.text.strip()
             if latest != BOT_VERSION:
-                await update.message.reply_text(
-                    f"🆕 <b>ДОСТУПНО ОБНОВЛЕНИЕ!</b>\n━━━━━━━━━━━━━━━━━\n"
-                    f"📦 Новая версия: {latest}\n"
-                    f"📋 Текущая: {BOT_VERSION}\n\n"
-                    f"Для обновления выполните:\n"
-                    f"<code>cd /opt/SLV_Bot && git pull && systemctl restart SLV-bot</code>",
-                    parse_mode='HTML')
+                # Получаем изменения из CHANGELOG
+                r2 = requests.get(f"{GITHUB_RAW}/CHANGELOG.md", timeout=10)
+                changes_text = ""
+                if r2.status_code == 200:
+                    pattern = f"## v{latest}.*?\n(.*?)(?=\n## v|\Z)"
+                    match = re.search(pattern, r2.text, re.DOTALL)
+                    if match:
+                        changes_text = match.group(1).strip()[:500]
+                
+                msg = f"🆕 <b>ДОСТУПНО ОБНОВЛЕНИЕ!</b>\n━━━━━━━━━━━━━━━━━\n"
+                msg += f"📦 Новая версия: {latest}\n"
+                msg += f"📋 Текущая: {BOT_VERSION}\n\n"
+                if changes_text:
+                    msg += f"📝 <b>Что нового:</b>\n{changes_text}\n\n"
+                msg += f"Для обновления:\n<code>slk-menu</code> → Обновить"
+                
+                await update.message.reply_text(msg, parse_mode='HTML')
             else:
                 await update.message.reply_text(
                     f"✅ <b>У вас актуальная версия:</b> {BOT_VERSION}",
