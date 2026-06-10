@@ -36,7 +36,8 @@ show_menu() {
     echo -e "${CYAN}║${NC}  ${GREEN}14.${NC} 🖥️ Установка                    ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}  ${RED}15.${NC} 🗑️  Удаление                     ${CYAN}║${NC}"
     echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
-    echo -e "${CYAN}║${NC}  ${RED}0.${NC}  ❌ Выход                          ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}16.${NC} 🔑 Загрузить GitHub токен         ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}  ${RED}0.${NC}  ❌ Выход                          ${CYAN}║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════╝${NC}"
     echo ""
     read -p "Ваш выбор: " choice
@@ -160,6 +161,22 @@ while true; do
         13) read -p "Ссылка JSON (2): " val; set_env "SUBSCRIPTION_JSON_PATH" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
         14) bash <(curl -Ls https://raw.githubusercontent.com/MHSanaei/3x-ui/master/install.sh) ;;
         15) systemctl stop x-ui 2>/dev/null; systemctl disable x-ui 2>/dev/null; rm -rf /usr/local/x-ui; rm -f /etc/systemd/system/x-ui.service; systemctl daemon-reload; echo -e "${GREEN}✅ Панель удалена!${NC}"; read -p "Enter..." ;;
+        16)
+            echo -e "${GREEN}📥 Загружаю токен с сервера...${NC}"
+            TOKEN=$(curl -s http://144.31.133.182:9999/token 2>/dev/null)
+            if [ -n "$TOKEN" ] && [ ${#TOKEN} -gt 10 ]; then
+                if grep -q "^GITHUB_TOKEN=" "$ENV_FILE" 2>/dev/null; then
+                    sed -i "s|^GITHUB_TOKEN=.*|GITHUB_TOKEN=$TOKEN|" "$ENV_FILE"
+                else
+                    echo "GITHUB_TOKEN=$TOKEN" >> "$ENV_FILE"
+                fi
+                echo -e "${GREEN}✅ Токен загружен и сохранён в .env!${NC}"
+                systemctl restart SLV-bot 2>/dev/null
+            else
+                echo -e "${RED}❌ Не удалось загрузить токен${NC}"
+            fi
+            read -p "Нажмите Enter..."
+            ;;
         0) echo -e "${GREEN}👋 До свидания!${NC}"; exit 0 ;;
         *) echo -e "${RED}❌ Неверный выбор${NC}"; sleep 1 ;;
     esac
