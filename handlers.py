@@ -5489,9 +5489,9 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
             return
         elif message_text == "💾 Бэкап":
             await create_backup(update, context)
-        elif message_text == "🆕 Что нового":
+        elif message_text == "📰 3x-ui News":
             await show_changelog(update, context)
-        elif message_text == "🆕 Что нового":
+        elif message_text == "📰 3x-ui News":
             await show_changelog(update, context)
         elif message_text == "🔄 Автосброс":
             await auto_reset_status(update, context)
