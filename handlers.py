@@ -1548,24 +1548,29 @@ async def check_bot_updates():
 
 
 async def check_bot_update_manual(update: Update, context: CallbackContext) -> None:
-    """Ручная проверка обновлений бота с выводом изменений"""
+    """Ручная проверка обновлений бота с выводом изменений (приватный репо)"""
     if not is_admin(update.effective_user.id):
         return
     
     await update.message.reply_text("🔄 <b>Проверяю обновления...</b>", parse_mode='HTML')
     
-    import requests, re
+    import requests, re, base64, json, os
     try:
-        r = requests.get(f"{GITHUB_RAW}/version.txt", timeout=10)
+        GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', '')
+        headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+        
+        # Получаем версию через API
+        r = requests.get("https://api.github.com/repos/elifecomp/slk-telegram-bot/contents/version.txt", headers=headers, timeout=10)
         if r.status_code == 200:
-            latest = r.text.strip()
+            latest = base64.b64decode(json.loads(r.text)["content"]).decode().strip()
             if latest != BOT_VERSION:
                 # Получаем изменения из CHANGELOG
-                r2 = requests.get(f"{GITHUB_RAW}/CHANGELOG.md", timeout=10)
+                r2 = requests.get("https://api.github.com/repos/elifecomp/slk-telegram-bot/contents/CHANGELOG.md", headers=headers, timeout=10)
                 changes_text = ""
                 if r2.status_code == 200:
+                    changelog_text = base64.b64decode(json.loads(r2.text)["content"]).decode()
                     pattern = f"## v{latest}.*?\n(.*?)(?=\n## v|\Z)"
-                    match = re.search(pattern, r2.text, re.DOTALL)
+                    match = re.search(pattern, changelog_text, re.DOTALL)
                     if match:
                         changes_text = match.group(1).strip()[:500]
                 
