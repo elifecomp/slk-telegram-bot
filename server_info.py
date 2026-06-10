@@ -169,9 +169,17 @@ def get_server_status():
         from handlers import BOT_VERSION
         # Проверяем обновление
         try:
-            import requests
-            r = requests.get("https://raw.githubusercontent.com/elifecomp/slk-telegram-bot/main/version.txt", timeout=5)
-            git_version = r.text.strip() if r.status_code == 200 else None
+            import requests, base64, json, os
+            token = os.getenv('GITHUB_TOKEN', '')
+            if token:
+                headers = {"Authorization": f"token {token}"}
+                r = requests.get("https://api.github.com/repos/elifecomp/slk-telegram-bot/contents/version.txt", headers=headers, timeout=5)
+                if r.status_code == 200:
+                    git_version = base64.b64decode(json.loads(r.text)["content"]).decode().strip()
+                else:
+                    git_version = None
+            else:
+                git_version = None
         except:
             git_version = None
         
