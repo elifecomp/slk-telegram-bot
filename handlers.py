@@ -2119,7 +2119,48 @@ async def handle_client_button(update: Update, context: CallbackContext) -> None
     else:
         await query.edit_message_text("❌ Клиент не найден", parse_mode=HTML)
 
-async def all_clients_old(update: Update, context: CallbackContext) -> None:
+
+async def handle_backup_delete(update: Update, context: CallbackContext) -> None:
+    """Обрабатывает удаление бэкапов"""
+    query = update.callback_query
+    await query.answer()
+    if query.data == "backup_delete_cancel":
+        await query.edit_message_text("❌  <b>Удаление отменено</b>", parse_mode=HTML)
+        return
+    if query.data == "backup_delete_confirm":
+        import os, glob
+        backups = glob.glob('/opt/SLV_Bot/backups/*.tar.gz')
+        count = len(backups)
+        for b in backups:
+            try:
+                os.remove(b)
+            except:
+                pass
+        await query.edit_message_text(
+            f"✅  <b>Удалено {count} бэкапов!</b>\n\n"
+            f"💾 Место освобождено.",
+            parse_mode=HTML
+        )
+
+async def list_backups(update: Update, context: CallbackContext) -> None:
+    """Показывает список бэкапов"""
+    if not is_admin(update.effective_user.id):
+        await update.message.reply_text("⛔  <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
+        return
+    import os, glob
+    backups = glob.glob('/opt/SLV_Bot/backups/*.tar.gz')
+    if not backups:
+        await update.message.reply_text("📋 <b>Список бэкапов пуст</b>", parse_mode=HTML)
+        return
+    msg = "📋 <b>СПИСОК БЭКАПОВ</b>\n\n"
+    for i, b in enumerate(sorted(backups, reverse=True), 1):
+        name = os.path.basename(b)
+        size = os.path.getsize(b)
+        size_str = f"{size/1024/1024:.1f} MB" if size > 1024*1024 else f"{size/1024:.1f} KB"
+        msg += f"{i}. {name} ({size_str})\n"
+    await update.message.reply_text(msg, parse_mode=HTML)
+
+
 async def clients_list(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
