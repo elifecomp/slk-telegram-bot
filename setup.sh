@@ -56,6 +56,7 @@ set_env() {
 install_bot() {
     echo -e "${GREEN}🚀 Установка SLK бота...${NC}"
     apt update -qq && apt install -y python3 python3-pip python3-venv git curl 2>/dev/null
+    cd /tmp
     
     if [ -d "/opt/SLV_Bot" ]; then
         echo -e "${YELLOW}⚠️ Бот уже установлен!${NC}"
