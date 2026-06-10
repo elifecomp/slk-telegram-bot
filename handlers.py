@@ -5484,7 +5484,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
             await delete_backups(update, context)
         elif message_text == "📋 Список бэкапов":
             await list_backups(update, context)
-        elif message_text == "🔄 Обновление бота":
+        elif message_text == "📰 SLK News":
             await check_bot_update_manual(update, context)
             return
         elif message_text == "💾 Бэкап":
