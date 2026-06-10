@@ -1,5 +1,5 @@
 #!/bin/bash
-# Установщик SLK Telegram Bot v2.0
+# Установщик SLK Telegram Bot v2.1
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -7,30 +7,34 @@ CYAN='\033[0;36m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
+ENV_FILE="/opt/SLV_Bot/.env"
+
 show_menu() {
     clear
     echo -e "${CYAN}╔══════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║${NC}     ${YELLOW}🔧 SLK TELEGRAM BOT — УСТАНОВКА${NC}     ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}     ${YELLOW}🔧 SLK TELEGRAM BOT v2.1${NC}           ${CYAN}║${NC}"
     echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
     echo -e "${CYAN}║${NC}  ${GREEN}1.${NC} 🚀 Установка бота                 ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}  ${RED}2.${NC} 🗑️  Удалить бота                   ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}  ${GREEN}3.${NC} 🔄 Обновление бота                ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}4.${NC} 🤖 Изменить токен бота            ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}5.${NC} 🆔 Изменить Telegram ID           ${CYAN}║${NC}"
     echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
     echo -e "${CYAN}║${NC}  ${YELLOW}Первая панель${NC}                         ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}4.${NC} 🤖 Изменить токен бота            ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}5.${NC} 🔗 Изменить URL панели             ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}6.${NC} 📋 Изменить ссылку SUB            ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}7.${NC} 📋 Изменить ссылку JSON           ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}6.${NC} 🔑 Токен панели 1                 ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}7.${NC} 🔗 URL панели 1                   ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}8.${NC} 📋 Ссылка SUB                    ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}9.${NC} 📋 Ссылка JSON                   ${CYAN}║${NC}"
     echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
     echo -e "${CYAN}║${NC}  ${YELLOW}Вторая панель${NC}                         ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}8.${NC} 🤖 Изменить токен бота (2)        ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}9.${NC} 🔗 Изменить URL панели (2)         ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}10.${NC} 📋 Изменить ссылку SUB (2)        ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}11.${NC} 📋 Изменить ссылку JSON (2)       ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}10.${NC} 🔑 Токен панели 2                ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}11.${NC} 🔗 URL панели 2                  ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}12.${NC} 📋 Ссылка SUB (2)               ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}13.${NC} 📋 Ссылка JSON (2)              ${CYAN}║${NC}"
     echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
     echo -e "${CYAN}║${NC}  ${YELLOW}3x-ui панель${NC}                         ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}12.${NC} 🖥️ Установка 3x-ui панели         ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${RED}13.${NC} 🗑️  Удалить 3x-ui панель           ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}14.${NC} 🖥️ Установка                    ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${RED}15.${NC} 🗑️  Удаление                     ${CYAN}║${NC}"
     echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
     echo -e "${CYAN}║${NC}  ${RED}0.${NC}  ❌ Выход                          ${CYAN}║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════╝${NC}"
@@ -38,54 +42,42 @@ show_menu() {
     read -p "Ваш выбор: " choice
 }
 
+set_env() { 
+    local key=$1; local val=$2
+    if grep -q "^$key=" "$ENV_FILE" 2>/dev/null; then
+        sed -i "s|^$key=.*|$key=$val|" "$ENV_FILE"
+    else
+        echo "$key=$val" >> "$ENV_FILE"
+    fi
+}
+
 install_bot() {
     echo -e "${GREEN}🚀 Установка SLK бота...${NC}"
-    echo ""
-    echo "📦 Устанавливаю зависимости..."
     apt update -qq && apt install -y python3 python3-pip python3-venv git curl 2>/dev/null
     
     if [ -d "/opt/SLV_Bot" ]; then
         echo -e "${YELLOW}⚠️ Бот уже установлен!${NC}"
         read -p "Переустановить? (y/n): " reinstall
-        if [ "$reinstall" != "y" ]; then
-            return
-        fi
+        [ "$reinstall" != "y" ] && return
+        systemctl stop SLV-bot 2>/dev/null
         rm -rf /opt/SLV_Bot
     fi
     
-    echo "📦 Клонирую с GitHub..."
     git clone https://github.com/elifecomp/slk-telegram-bot.git /opt/SLV_Bot
     cd /opt/SLV_Bot
     python3 -m venv venv
     source venv/bin/activate
-    pip install -r requirements.txt
+    pip install -r requirements.txt -q
     
-    echo ""
-    echo -e "${CYAN}⚙️ НАСТРОЙКА БОТА${NC}"
-    echo "━━━━━━━━━━━━━━━━━━"
-    read -p "Токен бота Telegram: " BOT_TOKEN
-    read -p "Ваш Telegram ID: " ADMIN_IDS
-    read -p "Название бота (по умолчанию SLK): " BOT_NAME
-    BOT_NAME=${BOT_NAME:-SLK}
-    read -p "URL панели 3x-ui: " XUI_PANEL_URL
-    read -p "API токен панели: " XUI_API_TOKEN
-    read -p "URL подписки: " SUBSCRIPTION_URL
-    read -p "Доп. путь подписки: " SUBSCRIPTION_EXTRA_PATH
-    read -p "Есть вторая панель? (y/n): " HAS_PANEL2
-    if [ "$HAS_PANEL2" = "y" ]; then
-      read -p "URL второй панели: " XUI2_PANEL_URL
-      read -p "API токен второй панели: " XUI2_API_TOKEN
-    fi
-    
-    cat > /opt/SLV_Bot/.env << ENVEOF
-BOT_TOKEN=$BOT_TOKEN
-ADMIN_IDS=$ADMIN_IDS
-BOT_NAME=$BOT_NAME
-XUI_PANEL_URL=$XUI_PANEL_URL
-XUI_API_TOKEN=$XUI_API_TOKEN
-SUBSCRIPTION_URL=$SUBSCRIPTION_URL
-SUBSCRIPTION_EXTRA_PATH=$SUBSCRIPTION_EXTRA_PATH
-SUBSCRIPTION_JSON_PATH=IOS-Android_SLK
+    # Создаём базовый .env с заглушками
+    cat > "$ENV_FILE" << 'ENVEOF'
+BOT_TOKEN=ваш_токен
+ADMIN_IDS=ваш_id
+XUI_PANEL_URL=ваш_url
+XUI_API_TOKEN=ваш_токен
+SUBSCRIPTION_URL=ваш_url
+SUBSCRIPTION_EXTRA_PATH=ваш_путь
+SUBSCRIPTION_JSON_PATH=ваш_json_путь
 XUI_VERIFY_SSL=True
 PERSONAL_CABINET_URL=http://localhost:8080/login
 WELCOME_AUDIO_PATH=/opt/SLV_Bot/welcome.mp3
@@ -93,13 +85,8 @@ TRAFFIC_CACHE_MAX_SIZE=10000
 TRAFFIC_CACHE_MAX_AGE_HOURS=24
 TRAFFIC_CACHE_CLEANUP_INTERVAL=3600
 ENVEOF
-    if [ "$HAS_PANEL2" = "y" ]; then
-      echo "XUI2_PANEL_URL=$XUI2_PANEL_URL" >> .env
-      echo "XUI2_API_TOKEN=$XUI2_API_TOKEN" >> .env
-      echo "XUI2_VERIFY_SSL=False" >> .env
-    fi
     
-    cat > /etc/systemd/system/SLV-bot.service << SVC
+    cat > /etc/systemd/system/SLV-bot.service << 'SVC'
 [Unit]
 Description=SLV Telegram Bot
 After=network.target
@@ -118,21 +105,16 @@ SVC
     systemctl enable SLV-bot
     systemctl start SLV-bot
     
-    # Алиас
-    echo "alias menu-slk='bash /opt/SLV_Bot/setup.sh'" >> ~/.bashrc
-    source ~/.bashrc 2>/dev/null
-    
-    echo ""
-    echo -e "${GREEN}✅ Бот установлен!${NC}"
-    echo -e "${CYAN}📋 Для вызова меню: menu-slk${NC}"
-    # Создаём глобальную команду
     cat > /usr/local/bin/menu-slk << 'MENUEOF'
 #!/bin/bash
 bash /opt/SLV_Bot/setup.sh
 MENUEOF
     chmod +x /usr/local/bin/menu-slk
-    echo "alias menu-slk='bash /opt/SLV_Bot/setup.sh'" >> ~/.bashrc
-    source ~/.bashrc 2>/dev/null
+    
+    echo ""
+    echo -e "${GREEN}✅ Бот установлен!${NC}"
+    echo -e "${YELLOW}⚙️ Настройте бота через меню (пункты 4-13)${NC}"
+    echo -e "${CYAN}📋 Меню: menu-slk${NC}"
     read -p "Нажмите Enter..."
 }
 
@@ -153,25 +135,9 @@ delete_bot() {
     systemctl disable SLV-bot 2>/dev/null
     rm -rf /opt/SLV_Bot
     rm -f /etc/systemd/system/SLV-bot.service
-    sed -i '/menu-slk/d' ~/.bashrc
+    rm -f /usr/local/bin/menu-slk
     systemctl daemon-reload
     echo -e "${GREEN}✅ Бот удалён!${NC}"
-    read -p "Нажмите Enter..."
-}
-
-change_env() {
-    local key=$1
-    local desc=$2
-    read -p "$desc: " value
-    if [ -n "$value" ]; then
-        if grep -q "^$key=" /opt/SLV_Bot/.env 2>/dev/null; then
-            sed -i "s|^$key=.*|$key=$value|" /opt/SLV_Bot/.env
-        else
-            echo "$key=$value" >> /opt/SLV_Bot/.env
-        fi
-        echo -e "${GREEN}✅ $desc обновлён!${NC}"
-        systemctl restart SLV-bot 2>/dev/null
-    fi
     read -p "Нажмите Enter..."
 }
 
@@ -182,24 +148,18 @@ while true; do
         1) install_bot ;;
         2) delete_bot ;;
         3) update_bot ;;
-        4) change_env "BOT_TOKEN" "Токен бота" ;;
-        5) change_env "XUI_PANEL_URL" "URL панели" ;;
-        6) change_env "SUBSCRIPTION_URL" "Ссылка SUB" ;;
-        7) change_env "SUBSCRIPTION_JSON_PATH" "Ссылка JSON" ;;
-        8) change_env "XUI2_API_TOKEN" "Токен бота (2)" ;;
-        9) change_env "XUI2_PANEL_URL" "URL панели (2)" ;;
-        10) change_env "SUBSCRIPTION_URL" "Ссылка SUB (2)" ;;
-        11) change_env "SUBSCRIPTION_JSON_PATH" "Ссылка JSON (2)" ;;
-        12) bash <(curl -Ls https://raw.githubusercontent.com/MHSanaei/3x-ui/master/install.sh) ;;
-        13) 
-            systemctl stop x-ui 2>/dev/null
-            systemctl disable x-ui 2>/dev/null
-            rm -rf /usr/local/x-ui
-            rm -f /etc/systemd/system/x-ui.service
-            systemctl daemon-reload
-            echo -e "${GREEN}✅ Панель удалена!${NC}"
-            read -p "Нажмите Enter..."
-            ;;
+        4) read -p "Токен бота: " val; set_env "BOT_TOKEN" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        5) read -p "Telegram ID: " val; set_env "ADMIN_IDS" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        6) read -p "Токен панели 1: " val; set_env "XUI_API_TOKEN" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        7) read -p "URL панели 1: " val; set_env "XUI_PANEL_URL" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        8) read -p "Ссылка SUB: " val; set_env "SUBSCRIPTION_URL" "$val"; read -p "Путь подписки: " val2; set_env "SUBSCRIPTION_EXTRA_PATH" "$val2"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        9) read -p "Ссылка JSON: " val; set_env "SUBSCRIPTION_JSON_PATH" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        10) read -p "Токен панели 2: " val; set_env "XUI2_API_TOKEN" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        11) read -p "URL панели 2: " val; set_env "XUI2_PANEL_URL" "$val"; set_env "XUI2_VERIFY_SSL" "False"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        12) read -p "Ссылка SUB (2): " val; set_env "SUBSCRIPTION_URL" "$val"; read -p "Путь подписки (2): " val2; set_env "SUBSCRIPTION_EXTRA_PATH" "$val2"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        13) read -p "Ссылка JSON (2): " val; set_env "SUBSCRIPTION_JSON_PATH" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        14) bash <(curl -Ls https://raw.githubusercontent.com/MHSanaei/3x-ui/master/install.sh) ;;
+        15) systemctl stop x-ui 2>/dev/null; systemctl disable x-ui 2>/dev/null; rm -rf /usr/local/x-ui; rm -f /etc/systemd/system/x-ui.service; systemctl daemon-reload; echo -e "${GREEN}✅ Панель удалена!${NC}"; read -p "Enter..." ;;
         0) echo -e "${GREEN}👋 До свидания!${NC}"; exit 0 ;;
         *) echo -e "${RED}❌ Неверный выбор${NC}"; sleep 1 ;;
     esac
