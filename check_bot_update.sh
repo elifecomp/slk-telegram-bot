@@ -14,9 +14,10 @@ while true; do
     if [ -n "$GIT_VER" ] && [ "$GIT_VER" != "$BOT_VER" ]; then
         LAST_VER=$(cat "$LAST_VER_FILE" 2>/dev/null)
         if [ "$GIT_VER" != "$LAST_VER" ]; then
+            MSG="🆕 ОБНОВЛЕНИЕ БОТА!%0A━━━━━━━━━━━━━━━━━%0A📦 Версия: ${GIT_VER}%0A📋 Текущая: ${BOT_VER}%0A%0AВыполните: slk-menu → Обновить"
             curl -s -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
                 -d "chat_id=${CHAT_ID}" -d "parse_mode=HTML" \
-                -d "text=🆕 <b>ОБНОВЛЕНИЕ БОТА!</b>%0A━━━━━━━━━━━━━━━━━%0A📦 Версия: ${GIT_VER}%0A📋 Текущая: ${BOT_VER}%0A%0AВыполните: <code>slk-menu</code> → Обновить" > /dev/null 2>&1
+                -d "text=${MSG}" > /dev/null 2>&1
         fi
         echo "$GIT_VER" > "$LAST_VER_FILE"
     fi
