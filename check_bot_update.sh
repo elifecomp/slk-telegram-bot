@@ -20,5 +20,5 @@ while true; do
         fi
         echo "$GIT_VER" > "$LAST_VER_FILE"
     fi
-    sleep 3600
+    sleep 1800
 done
