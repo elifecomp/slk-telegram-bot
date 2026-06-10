@@ -125,6 +125,14 @@ SVC
     echo ""
     echo -e "${GREEN}✅ Бот установлен!${NC}"
     echo -e "${CYAN}📋 Для вызова меню: menu-slk${NC}"
+    # Создаём глобальную команду
+    cat > /usr/local/bin/menu-slk << 'MENUEOF'
+#!/bin/bash
+bash /opt/SLV_Bot/setup.sh
+MENUEOF
+    chmod +x /usr/local/bin/menu-slk
+    echo "alias menu-slk='bash /opt/SLV_Bot/setup.sh'" >> ~/.bashrc
+    source ~/.bashrc 2>/dev/null
     read -p "Нажмите Enter..."
 }
 
