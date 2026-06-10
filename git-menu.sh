@@ -43,7 +43,6 @@ while true; do
             read -p "Новая версия (например 1.2.0): " ver
             read -p "Что изменилось (кратко): " changes
             echo "$ver" > version.txt
-            sed -i "s/BOT_VERSION = \".*\"/BOT_VERSION = \"$ver\"/" handlers.py
             today=$(date '+%d.%m.%Y')
             sed -i "4i ## v$ver ($today)\n- $changes\n" CHANGELOG.md
             git add -A
