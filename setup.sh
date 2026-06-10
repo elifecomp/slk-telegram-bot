@@ -121,7 +121,8 @@ MENUEOF
 update_bot() {
     echo -e "${GREEN}🔄 Обновляю бота...${NC}"
     cd /opt/SLV_Bot
-    git pull
+    git fetch --all
+    git reset --hard origin/main
     source venv/bin/activate
     pip install -r requirements.txt -q
     systemctl restart SLV-bot
