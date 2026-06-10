@@ -1562,13 +1562,9 @@ async def check_bot_update_manual(update: Update, context: CallbackContext) -> N
     
     import requests, re, base64, json, os
     try:
-        GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', '')
-        headers = {"Authorization": f"token {GITHUB_TOKEN}"}
-        
-        # Получаем версию через API
-        r = requests.get("https://api.github.com/repos/elifecomp/slk-telegram-bot/contents/version.txt", headers=headers, timeout=10)
+        r = requests.get(f"{GITHUB_RAW}/version.txt", timeout=10)
         if r.status_code == 200:
-            latest = base64.b64decode(json.loads(r.text)["content"]).decode().strip()
+            latest = r.text.strip()
             if latest != BOT_VERSION:
                 # Получаем изменения из CHANGELOG
                 r2 = requests.get("https://api.github.com/repos/elifecomp/slk-telegram-bot/contents/CHANGELOG.md", headers=headers, timeout=10)
