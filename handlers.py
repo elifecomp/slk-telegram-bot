@@ -1179,7 +1179,7 @@ async def show_changelog(update: Update, context: CallbackContext) -> None:
         message += f"📦 <b>У вас:</b> {current_ver}\n"
         message += f"🆕 <b>Доступна:</b> {latest_ver}\n\n"
         
-        for cl in changelogs[:2]:  # только последние 2 версии
+        for cl in changelogs[:1]:  # только последние 2 версии
             message += f"<b>📋 {cl['version']}</b> ({cl['date']})\n"
             for change in cl['changes'][:5]:  # показываем 5 изменений
                 message += f"{change}\n"
@@ -1361,7 +1361,7 @@ async def show_changelog(update: Update, context: CallbackContext) -> None:
         message += f"📦 <b>У вас:</b> {current}\n"
         message += f"🆕 <b>Доступна:</b> {latest}\n\n"
         
-        for cl in changelogs[:2]:  # только последние 2 версии
+        for cl in changelogs[:1]:  # только последние 2 версии
             message += f"📋 <b>{cl['version']}</b> ({cl['date']})\n"
             for change in cl['changes']:
                 message += f"  • {change}\n"
