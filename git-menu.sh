@@ -13,7 +13,7 @@ while true; do
     echo "╚══════════════════════════════════════════╝"
     echo ""
     read -p "Выбор: " choice
-    
+
     case $choice in
         1)
             cd /opt/SLV_Bot

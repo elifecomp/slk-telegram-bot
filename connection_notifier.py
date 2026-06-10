@@ -23,20 +23,20 @@ class ConnectionNotifier:
         self.cooldown = 120  # пауза между уведомлениями (сек)
         self.check_interval = 15  # интервал проверки (сек)
         logger.info("🔔 ConnectionNotifier инициализирован")
-    
+
     async def start(self):
         if self.running:
             return
         self.running = True
         self._task = asyncio.create_task(self._monitor_loop())
         logger.info(f"🔔 Мониторинг подключений запущен (интервал: {self.check_interval}с)")
-    
+
     async def stop(self):
         self.running = False
         if self._task:
             self._task.cancel()
         logger.info("🔔 Мониторинг подключений остановлен")
-    
+
     async def _monitor_loop(self):
         while self.running:
             try:
@@ -44,23 +44,23 @@ class ConnectionNotifier:
             except Exception as e:
                 logger.error(f"Ошибка в мониторинге: {e}")
             await asyncio.sleep(self.check_interval)
-    
+
     async def _check_connections(self):
         try:
             from xui_api import get_online_clients
             from panel_manager import get_panels_list, set_active_panel, get_active_panel
-            
+
             panels = get_panels_list()
             original = get_active_panel()['id']
-            
+
             for panel in panels:
                 set_active_panel(panel['id'])
                 await self._check_panel(panel)
-            
+
             set_active_panel(original)
         except Exception as e:
             logger.error(f"Ошибка проверки подключений: {e}")
-    
+
     async def _check_panel(self, panel):
         global notifications_enabled
         if not notifications_enabled:
@@ -69,45 +69,45 @@ class ConnectionNotifier:
             from xui_api import get_online_clients
             from database import db
             from panel_manager import get_active_panel
-            
+
             panel_name = panel["name"]
             current_online = set(get_online_clients())
-            
-            
+
+
             if not current_online and not self._previous_online:
                 return
-            
+
             new_connections = current_online - self._previous_online
             disconnected = self._previous_online - current_online
             now = time.time()
-            
+
             for email in new_connections:
                 if self._can_notify(email, now):
                     await self._notify_connected(email, panel_name)
                     self._last_notification[email] = now
-            
+
             for email in disconnected:
                 if self._can_notify(email, now):
                     if email not in current_online:
                         await self._notify_disconnected(email, panel_name)
                         self._last_notification[email] = now
-            
+
             self._previous_online = current_online
-            
+
         except Exception as e:
             logger.error(f"Ошибка проверки подключений: {e}")
-    
+
     def _can_notify(self, email: str, now: float) -> bool:
         last_time = self._last_notification.get(email, 0)
         return (now - last_time) >= self.cooldown
-    
+
     async def _notify_connected(self, email: str, panel_name: str):
         try:
             from database import db
             from config import ADMIN_IDS
-            
+
             client = db.get_client_by_login(email)
-            
+
             if client:
                 # Получаем IP и оператора
                 ip_info = ""
@@ -127,7 +127,7 @@ class ConnectionNotifier:
                                         ip_info += f"\n📡 <b>Оператор:</b> {isp}"
                             except: pass
                 except: pass
-                
+
                 message = (
                     f"🟢 <b>КЛИЕНТ ПОДКЛЮЧИЛСЯ</b>\n\n"
                     f"🏷️ <b>Панель:</b> {panel_name}\n"
@@ -156,7 +156,7 @@ class ConnectionNotifier:
                                         ip_info += f"\n📡 <b>Оператор:</b> {isp}"
                             except: pass
                 except: pass
-                
+
                 message = (
                     f"🟢 <b>КЛИЕНТ ПОДКЛЮЧИЛСЯ</b>\n\n"
                     f"🏷️ <b>Панель:</b> {panel_name}\n"
@@ -165,31 +165,31 @@ class ConnectionNotifier:
                     f"🕐 <b>Время:</b> {datetime.now().strftime('%H:%M:%S')}\n"
                     f"⚠️ <i>Не найден в базе данных</i>"
                 )
-            
+
             for admin_id in ADMIN_IDS:
                 try:
                     await self.bot.send_message(admin_id, message, parse_mode='HTML')
                 except:
                     pass
-            
+
             for admin_id in ADMIN_IDS:
                 try:
                     await self.bot.send_message(admin_id, message, parse_mode=HTML)
 
                 except:
                     pass
-            
+
             logger.info(f"🔔 {email} подключился ({panel_name})")
         except Exception as e:
             logger.error(f"Ошибка уведомления: {e}")
-    
+
     async def _notify_disconnected(self, email: str, panel_name: str):
         try:
             from database import db
             from config import ADMIN_IDS
-            
+
             client = db.get_client_by_login(email)
-            
+
             if client:
                 message = (
                     f"🔴 <b>КЛИЕНТ ОТКЛЮЧИЛСЯ</b>\n\n"
@@ -206,13 +206,13 @@ class ConnectionNotifier:
                     f"📝 <b>Логин:</b> {email}\n"
                     f"🕐 <b>Время:</b> {datetime.now().strftime('%H:%M:%S')}"
                 )
-            
+
             for admin_id in ADMIN_IDS:
                 try:
                     await self.bot.send_message(admin_id, message, parse_mode=HTML)
                 except:
                     pass
-            
+
             logger.info(f"🔔 {email} отключился ({panel_name})")
         except Exception as e:
             logger.error(f"Ошибка уведомления: {e}")

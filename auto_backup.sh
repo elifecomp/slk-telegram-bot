@@ -31,18 +31,18 @@ async def send():
     now = datetime.now()
     months = ['Января', 'Февраля', 'Марта', 'Апреля', 'Мая', 'Июня',
              'Июля', 'Августа', 'Сентября', 'Октября', 'Ноября', 'Декабря']
-    
+
     import os
     backup_file = os.popen('ls -t /opt/SLV_Bot/backups/SLV_bot_auto_*.tar.gz | head -1').read().strip()
     size = os.popen(f'du -sh {backup_file}').read().split()[0] if backup_file else '?'
     name = os.path.basename(backup_file) if backup_file else '?'
-    
+
     message = f"💾 <b>АВТО-БЭКАП СОЗДАН</b>\n\n"
     message += f"📁 <b>Файл:</b> {name}\n"
     message += f"📏 <b>Размер:</b> {size}\n"
     message += f"🕐 <b>Время:</b> {now.day} {months[now.month-1]} {now.year} | {now.strftime('%H:%M')}\n\n"
     message += f"<i>Бэкап создан автоматически</i>"
-    
+
     for admin_id in ADMIN_IDS:
         try:
             await bot.send_message(admin_id, message, parse_mode='HTML')

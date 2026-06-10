@@ -15,7 +15,7 @@ class Database:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             # Таблица клиентов
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS clients (
@@ -28,7 +28,7 @@ class Database:
                     is_active BOOLEAN DEFAULT TRUE
                 )
             ''')
-            
+
             conn.commit()
             conn.close()
             logger.info("База данных инициализирована успешно")
@@ -40,12 +40,12 @@ class Database:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 INSERT INTO clients (telegram_id, login, phone, name)
                 VALUES (?, ?, ?, ?)
             ''', (telegram_id, login, phone, name))
-            
+
             conn.commit()
             conn.close()
             logger.info(f"Клиент {login} добавлен в базу")
@@ -62,14 +62,14 @@ class Database:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 SELECT * FROM clients WHERE telegram_id = ?
             ''', (telegram_id,))
-            
+
             client = cursor.fetchone()
             conn.close()
-            
+
             if client:
                 return {
                     'id': client[0],
@@ -91,11 +91,11 @@ class Database:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 SELECT * FROM clients WHERE id = ?
             ''', (client_id,))
-            
+
             client = cursor.fetchone()
             conn.close()
             if client:
@@ -122,14 +122,14 @@ class Database:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 SELECT * FROM clients WHERE login = ?
             ''', (login,))
-            
+
             client = cursor.fetchone()
             conn.close()
-            
+
             if client:
                 return {
                     'id': client[0],
@@ -155,9 +155,9 @@ class Database:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('SELECT * FROM clients ORDER BY registration_date DESC')
-            
+
             clients = []
             for row in cursor.fetchall():
                 clients.append({
@@ -175,7 +175,7 @@ class Database:
                     'city': row[10] if len(row) > 10 else None,
                     'city': row[10] if len(row) > 10 else None
                 })
-            
+
             conn.close()
             return clients
         except Exception as e:
@@ -187,11 +187,11 @@ class Database:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 UPDATE clients SET login = ? WHERE id = ?
             ''', (new_login, client_id))
-            
+
             conn.commit()
             conn.close()
             logger.info(f"Логин клиента {client_id} обновлен на {new_login}")
@@ -208,11 +208,11 @@ class Database:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 UPDATE clients SET phone = ? WHERE id = ?
             ''', (new_phone, client_id))
-            
+
             conn.commit()
             conn.close()
             logger.info(f"Телефон клиента {client_id} обновлен на {new_phone}")
@@ -226,11 +226,11 @@ class Database:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 UPDATE clients SET name = ? WHERE id = ?
             ''', (new_name, client_id))
-            
+
             conn.commit()
             conn.close()
             logger.info(f"Имя клиента {client_id} обновлено на {new_name}")
@@ -244,19 +244,19 @@ class Database:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             # Получаем текущее состояние
             cursor.execute('SELECT is_active FROM clients WHERE id = ?', (client_id,))
             current_state = cursor.fetchone()[0]
             new_state = not current_state
-            
+
             cursor.execute('''
                 UPDATE clients SET is_active = ? WHERE id = ?
             ''', (new_state, client_id))
-            
+
             conn.commit()
             conn.close()
-            
+
             action = "разблокирован" if new_state else "заблокирован"
             logger.info(f"Клиент {client_id} {action}")
             return new_state
@@ -269,9 +269,9 @@ class Database:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('DELETE FROM clients WHERE id = ?', (client_id,))
-            
+
             conn.commit()
             conn.close()
             logger.info(f"Клиент {client_id} удален из базы")

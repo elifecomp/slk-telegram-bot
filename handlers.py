@@ -2,7 +2,6 @@ HTML = 'HTML'
 import logging
 import json
 import re
-import base64
 import os
 from telegram import InputFile
 import time
@@ -871,27 +870,6 @@ async def handle_panel_switch(update: Update, context: CallbackContext) -> None:
         )
 
 async def panel_switch_old(update: Update, context: CallbackContext) -> None:
-    if not is_admin(update.effective_user.id):
-        await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
-        return
-    
-    from panel_manager import _active_panel_id, get_panels_list
-    
-    panels = get_panels_list()
-    active = next((p for p in panels if p['id'] == _active_panel_id), panels[0])
-    
-    message = f"🔄 <b>Выбор панели</b>\n\n"
-    message += f"Активная: {active['emoji']} {active['name']}\n"
-    message += f"🔗 <code>{active['url']}</code>\n\n"
-    message += "<b>Выберите панель:</b>"
-    
-    await update.message.reply_text(
-        message,
-        reply_markup=create_panel_switch_keyboard(),
-        parse_mode=HTML
-    )
-
-async def handle_panel_selection(update: Update, context: CallbackContext) -> None:
     """Обрабатывает выбор панели"""
     if not is_admin(update.effective_user.id):
         return
@@ -1110,194 +1088,6 @@ async def create_backup(update: Update, context: CallbackContext) -> None:
         await update.message.reply_text("❌ <b>Ошибка создания бэкапа</b>", parse_mode=HTML)
 
 
-
-
-async def show_changelog(update: Update, context: CallbackContext) -> None:
-    """Показывает что нового в обновлениях панели"""
-    if not is_admin(update.effective_user.id):
-        return
-    
-    await update.message.reply_text("🔄 <b>Получаю информацию об обновлениях...</b>", parse_mode=HTML)
-    
-    def get_changelog():
-        import requests as req
-        try:
-            # Получаем текущую версию
-            from xui_api import get_panel_update_info
-            current_info = get_panel_update_info()
-            current_ver = current_info.get('currentVersion', '3.0.2')
-            latest_ver = current_info.get('latestVersion', 'v3.2.0')
-            
-            # Получаем релизы с GitHub
-            r = req.get("https://api.github.com/repos/MHSanaei/3x-ui/releases?per_page=10", timeout=10)
-            if r.status_code != 200:
-                return None
-            
-            releases = r.json()
-            
-            # Ищем текущую и последнюю версию
-            changelogs = []
-            found_current = False
-            
-            for release in releases:
-                tag = release.get('tag_name', '')
-                body = release.get('body', '')
-                date = release.get('published_at', '')[:10]
-                
-                # Собираем изменения для текущей и всех новых версий
-                if tag == latest_ver or (found_current and not found_current):
-                    # Извлекаем ключевые изменения
-                    lines = []
-                    for line in body.split('\n'):
-                        line = line.strip()
-                        if line.startswith('- [') or line.startswith('- feat'):
-                            # Извлекаем описание
-                            import re
-                            match = re.search(r'\]\s*(.+?)(?:\s*\(|$)', line)
-                            if match:
-                                lines.append(f"  • {match.group(1)[:80]}")
-                            elif len(line) > 10:
-                                clean = re.sub(r'\[.*?\]\(.*?\)', '', line)
-                                lines.append(f"  • {clean[:80]}")
-                    
-                    changelogs.append({
-                        'version': tag,
-                        'date': date,
-                        'changes': lines[:7]  # Топ-7 изменений
-                    })
-                    found_current = True
-                    
-                if len(changelogs) >= 2:
-                    break
-            
-            return changelogs, current_ver, latest_ver
-        except:
-            return None
-    
-    with ThreadPoolExecutor() as executor:
-        future = executor.submit(get_changelog)
-        result = future.result()
-    
-    if result:
-        changelogs, current_ver, latest_ver = result
-        
-        message = "🆕 <b>ОБНОВЛЕНИЯ ПАНЕЛИ 3X-UI</b>\n\n"
-        message += f"📦 <b>У вас:</b> {current_ver}\n"
-        message += f"🆕 <b>Доступна:</b> {latest_ver}\n\n"
-        
-        for cl in changelogs[:1]:  # только последние 2 версии
-            message += f"<b>📋 {cl['version']}</b> ({cl['date']})\n"
-            for change in cl['changes'][:5]:  # показываем 5 изменений
-                message += f"{change}\n"
-            message += "\n"
-        
-        message += "<i>Данные с GitHub</i>"
-    else:
-        message = "❌ <b>Не удалось получить информацию об обновлениях</b>"
-    
-    await update.message.reply_text(message, parse_mode=HTML)
-
-async def delete_backups(update: Update, context: CallbackContext) -> None:
-    """Удаляет все бэкапы"""
-    if not is_admin(update.effective_user.id):
-        return
-    
-    import os, glob
-    
-    backups = glob.glob('/opt/SLV_Bot/backups/*.tar.gz')
-    
-    if not backups:
-        await update.message.reply_text("📋 <b>Нет бэкапов для удаления</b>", parse_mode=HTML)
-        return
-    
-    # Показываем что будет удалено
-    message = "🗑️ <b>УДАЛЕНИЕ БЭКАПОВ</b>\n\n"
-    message += f"📁 <b>Будет удалено:</b> {len(backups)} файлов\n\n"
-    for b in backups[:5]:
-        name = os.path.basename(b)
-        size = os.path.getsize(b)
-        if size > 1024*1024*1024:
-            size_str = f"{size/1024/1024/1024:.1f} GB"
-        elif size > 1024*1024:
-            size_str = f"{size/1024/1024:.0f} MB"
-        else:
-            size_str = f"{size/1024:.0f} KB"
-        message += f"  • {name[:50]} — {size_str}\n"
-    
-    if len(backups) > 5:
-        message += f"  ... и ещё {len(backups)-5}\n"
-    
-    message += "\n⚠️ <b>Подтвердите удаление:</b>"
-    
-    keyboard = [
-        [InlineKeyboardButton("✅ Да, удалить все", callback_data="backup_delete_confirm"),
-         InlineKeyboardButton("❌ Отмена", callback_data="backup_delete_cancel")]
-    ]
-    
-    await update.message.reply_text(
-        message,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode=HTML
-    )
-
-async def handle_backup_delete(update: Update, context: CallbackContext) -> None:
-    """Обрабатывает удаление бэкапов"""
-    query = update.callback_query
-    await query.answer()
-    
-    if query.data == "backup_delete_cancel":
-        await query.edit_message_text("❌ <b>Удаление отменено</b>", parse_mode=HTML)
-        return
-    
-    if query.data == "backup_delete_confirm":
-        import os, glob
-        backups = glob.glob('/opt/SLV_Bot/backups/*.tar.gz')
-        count = len(backups)
-        
-        for b in backups:
-            try:
-                os.remove(b)
-            except:
-                pass
-        
-        await query.edit_message_text(
-            f"✅ <b>Удалено {count} бэкапов!</b>\n\n"
-            f"💾 Место освобождено.",
-            parse_mode=HTML
-        )
-
-async def list_backups(update: Update, context: CallbackContext) -> None:
-    """Показывает список бэкапов"""
-    if not is_admin(update.effective_user.id):
-        return
-    
-    import os, glob
-    
-    backups = sorted(glob.glob('/opt/SLV_Bot/backups/*.tar.gz'), reverse=True)
-    
-    if not backups:
-        await update.message.reply_text("📋 <b>Список бэкапов пуст</b>", parse_mode=HTML)
-        return
-    
-    message = "📋 <b>СПИСОК БЭКАПОВ</b>\n\n"
-    
-    for i, b in enumerate(backups[:10], 1):
-        name = os.path.basename(b)
-        size = os.path.getsize(b)
-        # Форматируем размер
-        if size > 1024 * 1024 * 1024:
-            size_str = f"{size / 1024 / 1024 / 1024:.1f} GB"
-        elif size > 1024 * 1024:
-            size_str = f"{size / 1024 / 1024:.0f} MB"
-        else:
-            size_str = f"{size / 1024:.0f} KB"
-        
-        message += f"{i}. <code>{name[:50]}</code> — {size_str}\n"
-    
-    if len(backups) > 10:
-        message += f"\n<i>... и ещё {len(backups) - 10}</i>"
-    
-    await update.message.reply_text(message, parse_mode=HTML)
 
 
 async def show_changelog(update: Update, context: CallbackContext) -> None:
@@ -2330,40 +2120,6 @@ async def handle_client_button(update: Update, context: CallbackContext) -> None
         await query.edit_message_text("❌ Клиент не найден", parse_mode=HTML)
 
 async def all_clients_old(update: Update, context: CallbackContext) -> None:
-    if not is_admin(update.effective_user.id):
-        await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
-        return
-    
-    await update.message.reply_text("🔄 <b>Получаю список инбаундов...</b>", parse_mode=HTML)
-    
-    def get_inbounds_data():
-        return get_inbounds_list()
-    
-    with ThreadPoolExecutor() as executor:
-        future = executor.submit(get_inbounds_data)
-        inbounds_list = future.result()
-    
-    if inbounds_list:
-        context.user_data['inbounds_list'] = inbounds_list
-        context.user_data['state'] = BotState.ALL_CLIENTS_MENU
-        
-        keyboard = create_inbounds_keyboard(inbounds_list)
-        
-        message = f"📡 <b>Доступные инбаунды:</b> {len(inbounds_list)}\n\n"
-        message += "👥 <b>Выберите инбаунд для просмотра клиентов:</b>"
-        
-        await update.message.reply_text(message, reply_markup=keyboard, parse_mode=HTML)
-    else:
-        await update.message.reply_text(
-            "❌ <b>Не удалось получить список инбаундов или инбаунды отсутствуют</b>\n\n"
-            "🔧 <b>Возможные причины:</b>\n"
-            "• Проблемы с подключением к панели\n"
-            "• Неправильные учетные данные\n"
-            "• На панели нет созданных инбаундов",
-            reply_markup=create_admin_keyboard(),
-            parse_mode=HTML
-        )
-        context.user_data['state'] = BotState.MAIN_MENU
 async def clients_list(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)

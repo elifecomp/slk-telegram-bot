@@ -44,7 +44,7 @@ echo -e "${CYAN}║${NC}  ${RED}0.${NC}  ❌ Выход                         
     read -p "Ваш выбор: " choice
 }
 
-set_env() { 
+set_env() {
     local key=$1; local val=$2
     if grep -q "^$key=" "$ENV_FILE" 2>/dev/null; then
         sed -i "s|^$key=.*|$key=$val|" "$ENV_FILE"
@@ -57,7 +57,7 @@ install_bot() {
     echo -e "${GREEN}🚀 Установка SLK бота...${NC}"
     apt update -qq && apt install -y python3 python3-pip python3-venv git curl 2>/dev/null
     cd /tmp
-    
+
     if [ -d "/opt/SLV_Bot" ]; then
         echo -e "${YELLOW}⚠️ Бот уже установлен!${NC}"
         read -p "Переустановить? (y/n): " reinstall
@@ -65,13 +65,13 @@ install_bot() {
         systemctl stop SLV-bot 2>/dev/null
         rm -rf /opt/SLV_Bot
     fi
-    
+
     git clone https://github.com/elifecomp/slk-telegram-bot.git /opt/SLV_Bot
     cd /opt/SLV_Bot
     python3 -m venv venv
     source venv/bin/activate
     pip install -r requirements.txt -q
-    
+
     # Создаём базовый .env с заглушками
     cat > "$ENV_FILE" << 'ENVEOF'
 BOT_TOKEN=ваш_токен
@@ -87,7 +87,7 @@ TRAFFIC_CACHE_MAX_SIZE=10000
 TRAFFIC_CACHE_MAX_AGE_HOURS=24
 TRAFFIC_CACHE_CLEANUP_INTERVAL=3600
 ENVEOF
-    
+
     cat > /etc/systemd/system/SLV-bot.service << 'SVC'
 [Unit]
 Description=SLV Telegram Bot
@@ -102,17 +102,17 @@ RestartSec=10
 [Install]
 WantedBy=multi-user.target
 SVC
-    
+
     systemctl daemon-reload
     systemctl enable SLV-bot
     systemctl start SLV-bot
-    
+
     cat > /usr/local/bin/menu-slk << 'MENUEOF'
 #!/bin/bash
 bash /opt/SLV_Bot/setup.sh
 MENUEOF
     chmod +x /usr/local/bin/menu-slk
-    
+
     echo ""
     echo -e "${GREEN}✅ Бот установлен!${NC}"
     echo -e "${YELLOW}⚙️ Настройте бота через меню (пункты 4-13)${NC}"

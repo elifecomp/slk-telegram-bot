@@ -15,17 +15,17 @@ class SyncManager:
         self._task = None
         self.last_sync = None
         logger.info("🔄 SyncManager инициализирован")
-    
+
     async def start(self):
         if self.running: return
         self.running = True
         self._task = asyncio.create_task(self._loop())
         logger.info("🔄 Автосинхронизация запущена (раз в 6 часов)")
-    
+
     async def stop(self):
         self.running = False
         if self._task: self._task.cancel()
-    
+
     async def _loop(self):
         while self.running:
             try:
@@ -33,21 +33,21 @@ class SyncManager:
             except Exception as e:
                 logger.error(f"Ошибка синхронизации: {e}")
             await asyncio.sleep(21600)  # 6 часов
-    
+
     async def _sync(self):
         """Выполняет синхронизацию"""
         from database import db
         from panel_manager import get_panels_list, set_active_panel, get_active_panel
         from xui_api import get_inbounds_list
-        
+
         panels = get_panels_list()
         original = get_active_panel()['id']
-        
+
         updated = 0
         added = 0
         deactivated = 0
         changes = []
-        
+
         # Собираем всех клиентов из панелей
         panel_clients = set()
         for panel in panels:
@@ -58,13 +58,13 @@ class SyncManager:
                     email = c.get('email', '')
                     if email:
                         panel_clients.add(email)
-        
+
         set_active_panel(original)
-        
+
         # Сверяем с базой
         db_users = db.get_all_clients()
         db_logins = {u['login'] for u in db_users}
-        
+
         # Новые клиенты из панели (есть в панели, нет в базе)
         new_in_panel = panel_clients - db_logins
         for email in new_in_panel:
@@ -82,7 +82,7 @@ class SyncManager:
                 changes.append(f"➕ {email} — добавлен")
             except:
                 pass
-        
+
         # Клиенты удалённые из панели (есть в базе, нет в панели)
         removed = db_logins - panel_clients
         for login in removed:
@@ -91,29 +91,29 @@ class SyncManager:
                 db.toggle_client_active(client['id'])
                 deactivated += 1
                 changes.append(f"⚠️ {login} — деактивирован")
-        
+
         self.last_sync = datetime.now()
-        
+
         # Отчёт админу
         if added > 0 or deactivated > 0 or updated > 0:
             from config import ADMIN_IDS
-            
+
             message = f"🔄 <b>СИНХРОНИЗАЦИЯ КЛИЕНТОВ</b>\n\n"
             message += f"➕ <b>Добавлено:</b> {added}\n"
             message += f"✏️ <b>Обновлено:</b> {updated}\n"
             message += f"⚠️ <b>Деактивировано:</b> {deactivated}\n\n"
-            
+
             if changes:
                 message += "<b>Изменения:</b>\n"
                 for ch in changes[:10]:
                     message += f"  {ch}\n"
-            
+
             for admin_id in ADMIN_IDS:
                 try:
                     await self.bot.send_message(admin_id, message, parse_mode='HTML')
                 except:
                     pass
-        
+
         logger.info(f"🔄 Синхронизация: +{added} ✏️{updated} ⚠️{deactivated}")
 
 sync_manager = None

@@ -29,7 +29,7 @@ class BirthdayGreeter:
         self._task = None
         self.last_check_date = None
         logger.info("🎂 BirthdayGreeter инициализирован")
-    
+
     async def start(self):
         if self.running: return
         self.running = True
@@ -39,31 +39,31 @@ class BirthdayGreeter:
         pass  # отключено
         # Проверяем сразу при старте
         pass  # отключено
-    
+
     async def stop(self):
         self.running = False
         if self._task: self._task.cancel()
-    
+
     async def _loop(self):
         while self.running:
             today = datetime.now().date()
-            
+
             if self.last_check_date != today:
                 await self._check_birthdays()
                 self.last_check_date = today
-            
+
             await asyncio.sleep(3600)  # Проверяем раз в час
-    
+
     async def _check_birthdays(self):
         from database import db
         users = db.get_all_clients()
         today = datetime.now()
-        
+
         for user in users:
             birthday = user.get('birthday', '')
             if not birthday:
                 continue
-            
+
             try:
                 # Формат ДД.ММ.ГГГГ
                 b_day, b_month, _ = birthday.split('.')
@@ -71,7 +71,7 @@ class BirthdayGreeter:
                     await self._send_greeting(user)
             except:
                 pass
-    
+
     async def _send_greeting(self, user):
         # Проверяем не отправляли ли уже сегодня
         today = datetime.now().date()
@@ -86,7 +86,7 @@ class BirthdayGreeter:
             msg += f"👤 <b>{user['name']}</b>\n"
             msg += f"🎂 <b>С днём рождения!</b>\n\n"
             msg += f"🇷🇺 -SLK- 🇷🇺"
-            
+
             await self.bot.send_sticker(user['telegram_id'], 'CAACAgIAAxkBAAI1OWohkm8tfzWG0h8R3-HHZNSJ1vB8AAILAQAC9wLID8X0O5iVqnHbOwQ')
             await self.bot.send_message(user['telegram_id'], msg, parse_mode='HTML')
             logger.info(f"🎂 Поздравление отправлено: {user['name']}")

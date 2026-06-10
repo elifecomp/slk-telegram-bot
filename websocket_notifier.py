@@ -14,14 +14,14 @@ class WebSocketNotifier:
         self.running = False
         self._task = None
         logger.info("🔌 WebSocketNotifier инициализирован (режим совместимости)")
-    
+
     async def start(self):
         if self.running:
             return
         self.running = True
         # Пока отключаем WebSocket, используем обычный polling
         logger.info("🔌 WebSocket уведомления: используется polling режим")
-    
+
     async def stop(self):
         self.running = False
         if self._task:

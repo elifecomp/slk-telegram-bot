@@ -53,7 +53,7 @@ def _api(method: str, endpoint: str, **kwargs) -> dict:
     url = _url(endpoint) if not endpoint.startswith('http') else endpoint
     kwargs.setdefault('headers', _headers())
     kwargs.setdefault('timeout', 15)
-    
+
     for attempt in range(3):
         try:
             if attempt > 0: time.sleep(attempt * 2)
@@ -86,19 +86,19 @@ def login_to_panel() -> bool:
     global _last_auth_time
     if USE_API_TOKEN: return True
     if _last_auth_time and (datetime.now() - _last_auth_time).seconds < 1800: return True
-    
+
     try:
         # CSRF
         r = session.get(f"{XUI_PANEL_URL}/", timeout=10)
         csrf = re.search(r'csrf-token"\s+content="([^"]+)"', r.text)
-        
+
         headers = {'Content-Type': 'application/json'}
         if csrf: headers['X-CSRF-TOKEN'] = csrf.group(1)
-        
-        r = session.post(f"{XUI_PANEL_URL}/login", 
+
+        r = session.post(f"{XUI_PANEL_URL}/login",
                         json={'username': XUI_USERNAME, 'password': XUI_PASSWORD},
                         headers=headers, timeout=10)
-        
+
         if r.status_code in [200, 302]:
             _last_auth_time = datetime.now()
             return True

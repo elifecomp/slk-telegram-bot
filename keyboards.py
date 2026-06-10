@@ -29,7 +29,7 @@ def create_user_keyboard(user_id=None, is_admin=False):
     ]
     if is_admin:
         keyboard.append(["⚙️ Админ-панель"])
-    
+
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 def create_app_links_keyboard():

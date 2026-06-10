@@ -10,15 +10,15 @@ def get_proxy_status():
     """Получает статус прокси"""
     try:
         # Статус сервиса
-        result = subprocess.run(['systemctl', 'is-active', 'danted'], 
+        result = subprocess.run(['systemctl', 'is-active', 'danted'],
                                capture_output=True, text=True, timeout=5)
         status = result.stdout.strip()
-        
+
         # Активные подключения
-        result2 = subprocess.run(['ss', '-tn'], 
+        result2 = subprocess.run(['ss', '-tn'],
                                 capture_output=True, text=True, timeout=5)
         connections = len([l for l in result2.stdout.split('\n') if ':54985' in l])
-        
+
         # Логи (последние 5 строк)
         try:
             log = subprocess.run(['journalctl', '-u', 'danted', '--no-pager', '-n', '5'],
@@ -26,14 +26,14 @@ def get_proxy_status():
             logs = log.stdout.strip().split('\n')[-3:]
         except:
             logs = ['Лог недоступен']
-        
+
         # Конфиг
         try:
             with open('/etc/danted.conf', 'r') as f:
                 config_lines = [l.strip() for l in f.readlines() if not l.startswith('#') and l.strip()]
         except:
             config_lines = ['Конфиг не найден']
-        
+
         return {
             'status': status,
             'connections': connections,
@@ -68,7 +68,7 @@ def add_proxy_user(login, password):
     try:
         import subprocess
         # Создаём пользователя без домашней папки
-        subprocess.run(['useradd', '-M', '-s', '/usr/sbin/nologin', login], 
+        subprocess.run(['useradd', '-M', '-s', '/usr/sbin/nologin', login],
                       capture_output=True, timeout=10)
         # Устанавливаем пароль
         subprocess.run(['chpasswd'], input=f"{login}:{password}".encode(),

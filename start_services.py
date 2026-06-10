@@ -19,11 +19,11 @@ def main():
     """Запуск всех сервисов бота"""
     try:
         logger.info("🚀 Запуск SLV Telegram Bot...")
-        
+
         # Импортируем и запускаем бота
         from bot import main as run_bot
         run_bot()
-        
+
     except ImportError as e:
         logger.error(f"❌ Ошибка импорта: {e}")
         logger.error("Проверьте структуру проекта и наличие всех файлов")
