@@ -924,7 +924,7 @@ async def server_speed_test(update: Update, context: CallbackContext) -> None:
         # Создаём файл 5MB для отправки
         os.system("dd if=/dev/urandom of=/tmp/speedtest.bin bs=1M count=5 2>/dev/null")
         ul = subprocess.run(
-            "curl -o /dev/null -s -w '%{speed_upload}' -F 'file=@/tmp/speedtest.bin' https://file.io",
+            "curl -o /dev/null -s -w '%{speed_upload}' -L -F 'file=@/tmp/speedtest.bin' https://file.io",
             shell=True, capture_output=True, text=True, timeout=30
         )
         ul_speed = int(ul.stdout.strip()) if ul.stdout.strip().isdigit() else 0
