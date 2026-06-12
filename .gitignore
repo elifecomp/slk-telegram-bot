@@ -7,3 +7,5 @@ backups/
 .env
 .env.bak
 servers.txt
+*.bak
+*.bak2
