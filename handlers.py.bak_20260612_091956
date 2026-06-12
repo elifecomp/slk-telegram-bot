@@ -15,10 +15,10 @@ import qrcode
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import CallbackContext
 from operators import get_operator
-from config import BOT_NAME, WELCOME_AUDIO_PATH, ADMIN_IDS
-from config import BOT_NAME, WELCOME_AUDIO_PATH
-from config import BOT_NAME, ADMIN_IDS, BotState, SUBSCRIPTION_URL, SUBSCRIPTION_JSON_PATH, SUBSCRIPTION_EXTRA_PATH
-from config import BOT_NAME, SUBSCRIPTION_EXTRA_PATH
+from config import WELCOME_AUDIO_PATH, ADMIN_IDS
+from config import WELCOME_AUDIO_PATH
+from config import ADMIN_IDS, BotState, SUBSCRIPTION_URL, SUBSCRIPTION_JSON_PATH, SUBSCRIPTION_EXTRA_PATH
+from config import SUBSCRIPTION_EXTRA_PATH
 from panel_manager import get_panels_list as get_all_panels, set_active_panel as switch_active_panel
 from keyboards import (
     create_groups_keyboard, create_group_actions_keyboard,
@@ -111,7 +111,7 @@ async def start(update: Update, context: CallbackContext) -> None:
     if is_admin(user_id):
         welcome_text = f"""⚡ <b>Привет, {user.first_name}!</b>
 
-🛡️ <b>{BOT_NAME}</b>
+🛡️ <b>🇷🇺 -SLK- 🇷🇺</b>
    <i>Админ-панель</i>
 
 👇 <b>Выберите действие:</b>"""
@@ -224,7 +224,7 @@ async def play_welcome_audio(update: Update, context: CallbackContext) -> None:
                         audio=InputFile(audio_file, filename="welcome.mp3"),
                         caption="🎵 Добро пожаловать! Слушайте приветственное сообщение...",
                         duration=60,
-                        performer=BOT_NAME,
+                        performer="🇷🇺 -SLK- 🇷🇺",
                         title="Приветствие"
                     )
                 logger.info(f"✅ Аудио успешно отправлено пользователю {update.effective_user.id}")
@@ -4511,7 +4511,7 @@ async def link(update: Update, context: CallbackContext) -> None:
         # Формируем JSON ссылку
         json_link = ""
         try:
-            from config import BOT_NAME, SUBSCRIPTION_JSON_PATH
+            from config import SUBSCRIPTION_JSON_PATH
             if SUBSCRIPTION_JSON_PATH:
                 json_link = f"{SUBSCRIPTION_URL}/json/{SUBSCRIPTION_JSON_PATH}/{sub_id}"
         except:
@@ -4928,7 +4928,7 @@ async def handle_copy_callback(update: Update, context: CallbackContext) -> None
     query = update.callback_query
     await query.answer()
     data = query.data
-    from config import BOT_NAME, SUBSCRIPTION_URL, SUBSCRIPTION_JSON_PATH, SUBSCRIPTION_EXTRA_PATH
+    from config import SUBSCRIPTION_URL, SUBSCRIPTION_JSON_PATH, SUBSCRIPTION_EXTRA_PATH, SUBSCRIPTION_JSON_PATH
     if "copy_sub_" in data:
         sub_id = data.replace("copy_sub_", "")
         link = SUBSCRIPTION_URL + "/sub/" + SUBSCRIPTION_EXTRA_PATH + "/" + sub_id

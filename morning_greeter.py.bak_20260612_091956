@@ -202,7 +202,7 @@ class MorningGreeter:
                     message += f"{real_weather}\n\n"
                 message += f"{motivation}\n\n"
                 message += f"{season_tip}\n\n"
-                message += BOT_NAME
+                message += f"🇷🇺 -SLK- 🇷🇺"
 
                 try:
                     await self.bot.send_sticker(user['telegram_id'], 'CAACAgIAAxkBAAI1pWohpKq-oXMroLn6_KG-3IAZdRRQAAL1KAACCKQwStmJ6UyR9MekOwQ')

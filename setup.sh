@@ -1,56 +1,56 @@
 #!/bin/bash
-# Установщик SLK Telegram Bot v2.1
-
+# Установщик SLK Telegram Bot v2.2
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
-
 ENV_FILE="/opt/SLV_Bot/.env"
 
-show_menu() {
-    clear
-    echo -e "${CYAN}╔══════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║${NC}     ${YELLOW}🔧 SLK TELEGRAM BOT v2.1${NC}           ${CYAN}║${NC}"
-    echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}1.${NC} 🚀 Установка бота                 ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${RED}2.${NC} 🗑️  Удалить бота                   ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}3.${NC} 🔄 Обновление бота                ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}4.${NC} 🤖 Изменить токен бота            ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}5.${NC} 🆔 Изменить Telegram ID           ${CYAN}║${NC}"
-    echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
-    echo -e "${CYAN}║${NC}  ${YELLOW}Первая панель${NC}                         ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}6.${NC} 🔑 Токен панели 1                 ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}7.${NC} 🔗 URL панели 1                   ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}8.${NC} 📋 Ссылка SUB                    ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}9.${NC} 📋 Ссылка JSON                   ${CYAN}║${NC}"
-    echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
-    echo -e "${CYAN}║${NC}  ${YELLOW}Вторая панель${NC}                         ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}10.${NC} 🔑 Токен панели 2                ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}11.${NC} 🔗 URL панели 2                  ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}12.${NC} 📋 Ссылка SUB (2)               ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}13.${NC} 📋 Ссылка JSON (2)              ${CYAN}║${NC}"
-    echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
-    echo -e "${CYAN}║${NC}  ${YELLOW}3x-ui панель${NC}                         ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}14.${NC} 🖥️ Установка                    ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${RED}15.${NC} 🗑️  Удаление                     ${CYAN}║${NC}"
-    echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}16.${NC} 🔄 Обновить меню                 ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}17.${NC} 🔑 Загрузить GitHub токен         ${CYAN}║${NC}"
-echo -e "${CYAN}║${NC}  ${RED}0.${NC}  ❌ Выход                          ${CYAN}║${NC}"
-    echo -e "${CYAN}╚══════════════════════════════════════════╝${NC}"
-    echo ""
-    read -p "Ваш выбор: " choice
-}
-
 set_env() {
-    local key=$1; local val=$2
+    local key="$1"
+    local val="$2"
     if grep -q "^$key=" "$ENV_FILE" 2>/dev/null; then
         sed -i "s|^$key=.*|$key=$val|" "$ENV_FILE"
     else
         echo "$key=$val" >> "$ENV_FILE"
     fi
+}
+
+show_menu() {
+    clear
+    echo -e "${CYAN}╔══════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║${NC}     ${YELLOW}🔧 SLK TELEGRAM BOT v2.2${NC}        ${CYAN}║${NC}"
+    echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}1.${NC} 🚀 Установка бота                 ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${RED}2.${NC} 🗑️  Удалить бота                   ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}3.${NC} 🔄 Обновление бота                ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}4.${NC} ✏️  Название бота                 ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}5.${NC} 🤖 Изменить токен бота            ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}6.${NC} 🆔 Изменить Telegram ID           ${CYAN}║${NC}"
+    echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║${NC}  ${YELLOW}Первая панель${NC}                         ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}7.${NC} 🔑 Токен панели 1                 ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}8.${NC} 🔗 URL панели 1                   ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}9.${NC} 📋 Ссылка SUB                    ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}10.${NC} 📋 Ссылка JSON                   ${CYAN}║${NC}"
+    echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║${NC}  ${YELLOW}Вторая панель${NC}                        ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}11.${NC} 🔑 Токен панели 2                ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}12.${NC} 🔗 URL панели 2                  ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}13.${NC} 📋 Ссылка SUB (2)               ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}14.${NC} 📋 Ссылка JSON (2)              ${CYAN}║${NC}"
+    echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║${NC}  ${YELLOW}3x-ui панель${NC}                         ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}15.${NC} 🖥️ Установка                    ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${RED}16.${NC} 🗑️  Удаление                     ${CYAN}║${NC}"
+    echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}17.${NC} 🔄 Обновить меню                 ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}18.${NC} 🔑 Загрузить GitHub токен         ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${RED}0.${NC}  ❌  Выход                          ${CYAN}║${NC}"
+    echo -e "${CYAN}╚══════════════════════════════════════════╝${NC}"
+    echo ""
+    read -p "Ваш выбор: " choice
 }
 
 install_bot() {
@@ -78,7 +78,6 @@ install_bot() {
     
     echo -e "${YELLOW}⏳ Ожидайте подтверждения (ID: ${REQ_ID})...${NC}"
     
-    # Ждём до 5 минут
     for i in $(seq 1 60); do
         STATUS=$(curl -s "http://31.76.40.27:5555/install-check?id=${REQ_ID}")
         if [ "$STATUS" = "approved" ]; then
@@ -98,7 +97,6 @@ install_bot() {
     
     apt update -qq && apt install -y python3 python3-pip python3-venv git curl 2>/dev/null
     cd /tmp
-
     if [ -d "/opt/SLV_Bot" ]; then
         echo -e "${YELLOW}⚠️ Бот уже установлен!${NC}"
         read -p "Переустановить? (y/n): " reinstall
@@ -106,17 +104,15 @@ install_bot() {
         systemctl stop SLV-bot 2>/dev/null
         rm -rf /opt/SLV_Bot
     fi
-
     git clone https://github.com/elifecomp/slk-telegram-bot.git /opt/SLV_Bot
     cd /opt/SLV_Bot
     python3 -m venv venv
     source venv/bin/activate
     pip install -r requirements.txt -q
-
-    # Создаём базовый .env с заглушками
     cat > "$ENV_FILE" << 'ENVEOF'
 BOT_TOKEN=ваш_токен
 ADMIN_IDS=ваш_id
+BOT_NAME=SLK Bot
 XUI_PANEL_URL=ваш_url
 XUI_API_TOKEN=ваш_токен
 SUBSCRIPTION_URL=ваш_url
@@ -128,36 +124,26 @@ TRAFFIC_CACHE_MAX_SIZE=10000
 TRAFFIC_CACHE_MAX_AGE_HOURS=24
 TRAFFIC_CACHE_CLEANUP_INTERVAL=3600
 ENVEOF
-
-    cat > /etc/systemd/system/SLV-bot.service << 'SVC'
+    cat > /etc/systemd/system/SLV-bot.service << 'SVCEOF'
 [Unit]
 Description=SLV Telegram Bot
 After=network.target
+
 [Service]
 Type=simple
-User=root
 WorkingDirectory=/opt/SLV_Bot
 ExecStart=/opt/SLV_Bot/venv/bin/python /opt/SLV_Bot/start_services.py
 Restart=always
 RestartSec=10
+
 [Install]
 WantedBy=multi-user.target
-SVC
-
+SVCEOF
     systemctl daemon-reload
     systemctl enable SLV-bot
     systemctl start SLV-bot
-
-    cat > /usr/local/bin/menu-slk << 'MENUEOF'
-#!/bin/bash
-bash /opt/SLV_Bot/setup.sh
-MENUEOF
-    chmod +x /usr/local/bin/menu-slk
-
-    echo ""
     echo -e "${GREEN}✅ Бот установлен!${NC}"
-    echo -e "${YELLOW}⚙️ Настройте бота через меню (пункты 4-13)${NC}"
-    echo -e "${CYAN}📋 Меню: menu-slk${NC}"
+    echo -e "${YELLOW}⚠️ Не забудьте настроить токены в меню!${NC}"
     read -p "Нажмите Enter..."
 }
 
@@ -174,13 +160,12 @@ update_bot() {
 }
 
 delete_bot() {
-    echo -e "${RED}🗑️ Удаляю бота...${NC}"
+    echo -e "${RED}🗑️ Удаление бота...${NC}"
     systemctl stop SLV-bot 2>/dev/null
     systemctl disable SLV-bot 2>/dev/null
-    rm -rf /opt/SLV_Bot
     rm -f /etc/systemd/system/SLV-bot.service
-    rm -f /usr/local/bin/menu-slk
     systemctl daemon-reload
+    rm -rf /opt/SLV_Bot
     echo -e "${GREEN}✅ Бот удалён!${NC}"
     read -p "Нажмите Enter..."
 }
@@ -192,44 +177,29 @@ while true; do
         1) install_bot ;;
         2) delete_bot ;;
         3) update_bot ;;
-        4) read -p "Токен бота: " val; set_env "BOT_TOKEN" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        5) read -p "Telegram ID: " val; set_env "ADMIN_IDS" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        6) read -p "Токен панели 1: " val; set_env "XUI_API_TOKEN" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        7) read -p "URL панели 1: " val; set_env "XUI_PANEL_URL" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        8) read -p "Ссылка SUB: " val; set_env "SUBSCRIPTION_URL" "$val"; read -p "Путь подписки: " val2; set_env "SUBSCRIPTION_EXTRA_PATH" "$val2"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        9) read -p "Ссылка JSON: " val; set_env "SUBSCRIPTION_JSON_PATH" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        10) read -p "Токен панели 2: " val; set_env "XUI2_API_TOKEN" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        11) read -p "URL панели 2: " val; set_env "XUI2_PANEL_URL" "$val"; set_env "XUI2_VERIFY_SSL" "False"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        12) read -p "Ссылка SUB (2): " val; set_env "SUBSCRIPTION_URL" "$val"; read -p "Путь подписки (2): " val2; set_env "SUBSCRIPTION_EXTRA_PATH" "$val2"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        13) read -p "Ссылка JSON (2): " val; set_env "SUBSCRIPTION_JSON_PATH" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        14) bash <(curl -Ls https://raw.githubusercontent.com/MHSanaei/3x-ui/master/install.sh) ;;
-        15) systemctl stop x-ui 2>/dev/null; systemctl disable x-ui 2>/dev/null; rm -rf /usr/local/x-ui; rm -f /etc/systemd/system/x-ui.service; systemctl daemon-reload; echo -e "${GREEN}✅ Панель удалена!${NC}"; read -p "Enter..." ;;
-        16)
-            echo -e "${GREEN}🔄 Обновляю меню...${NC}"
-            cd /opt/SLV_Bot
-            git fetch --all
-            git checkout origin/main -- setup.sh
-            chmod +x setup.sh
-            cp setup.sh /opt/SLV_Bot/setup.sh
-            echo -e "${GREEN}✅ Меню обновлено! Перезапустите slk-menu${NC}"
-            read -p "Нажмите Enter..."
-            exec bash /opt/SLV_Bot/setup.sh
-            ;;
-        17)
-            echo -e "${GREEN}📥 Загружаю токен с сервера...${NC}"
+        4) read -p "Название бота: " val; set_env "BOT_NAME" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        5) read -p "Токен бота: " val; set_env "BOT_TOKEN" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        6) read -p "Telegram ID: " val; set_env "ADMIN_IDS" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        7) read -p "Токен панели 1: " val; set_env "XUI_API_TOKEN" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        8) read -p "URL панели 1: " val; set_env "XUI_PANEL_URL" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        9) read -p "Ссылка SUB: " val; set_env "SUBSCRIPTION_URL" "$val"; read -p "Путь подписки: " val2; set_env "SUBSCRIPTION_EXTRA_PATH" "$val2"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        10) read -p "Ссылка JSON: " val; set_env "SUBSCRIPTION_JSON_PATH" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        11) read -p "Токен панели 2: " val; set_env "XUI2_API_TOKEN" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        12) read -p "URL панели 2: " val; set_env "XUI2_PANEL_URL" "$val"; set_env "XUI2_VERIFY_SSL" "False"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        13) read -p "Ссылка SUB (2): " val; set_env "SUBSCRIPTION_URL" "$val"; read -p "Путь подписки (2): " val2; set_env "SUBSCRIPTION_EXTRA_PATH" "$val2"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        14) read -p "Ссылка JSON (2): " val; set_env "SUBSCRIPTION_JSON_PATH" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        15) bash <(curl -Ls https://raw.githubusercontent.com/MHSanaei/3x-ui/master/install.sh) ;;
+        16) systemctl stop x-ui 2>/dev/null; systemctl disable x-ui 2>/dev/null; rm -rf /usr/local/x-ui; rm -f /etc/systemd/system/x-ui.service; systemctl daemon-reload; echo -e "${GREEN}✅ Панель удалена!${NC}"; read -p "Enter..." ;;
+        17) curl -s -o /opt/SLV_Bot/setup.sh https://raw.githubusercontent.com/elifecomp/slk-telegram-bot/main/setup.sh && chmod +x /opt/SLV_Bot/setup.sh && echo -e "${GREEN}✅ Меню обновлено!${NC}"; read -p "Enter..." ;;
+        18) 
             TOKEN=$(curl -s http://144.31.133.182:9999/token 2>/dev/null)
-            if [ -n "$TOKEN" ] && [ ${#TOKEN} -gt 10 ]; then
-                if grep -q "^GITHUB_TOKEN=" "$ENV_FILE" 2>/dev/null; then
-                    sed -i "s|^GITHUB_TOKEN=.*|GITHUB_TOKEN=$TOKEN|" "$ENV_FILE"
-                else
-                    echo "GITHUB_TOKEN=$TOKEN" >> "$ENV_FILE"
-                fi
-                echo -e "${GREEN}✅ Токен загружен и сохранён в .env!${NC}"
-                systemctl restart SLV-bot 2>/dev/null
+            if [ -n "$TOKEN" ]; then
+                set_env "GITHUB_TOKEN" "$TOKEN"
+                echo -e "${GREEN}✅ GitHub токен загружен!${NC}"
             else
-                echo -e "${RED}❌ Не удалось загрузить токен${NC}"
+                echo -e "${RED}❌ Сервер токенов недоступен${NC}"
             fi
-            read -p "Нажмите Enter..."
+            read -p "Enter..."
             ;;
         0) echo -e "${GREEN}👋 До свидания!${NC}"; exit 0 ;;
         *) echo -e "${RED}❌ Неверный выбор${NC}"; sleep 1 ;;

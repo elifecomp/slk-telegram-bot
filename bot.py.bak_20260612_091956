@@ -6,7 +6,7 @@ import os
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 
-from config import BOT_NAME,  BOT_TOKEN, WELCOME_AUDIO_PATH, XUI_VERIFY_SSL
+from config import BOT_TOKEN, WELCOME_AUDIO_PATH, XUI_VERIFY_SSL
 from handlers import start, status, BOT_VERSION, handle_message, check_bot_updates, ai_help, show_direct_keys_handler, ai_exit_handler, server_monitor, monitor_callback, error_handler, get_telegram_id, button_callback, handle_backup_delete, handle_online_info, handle_inbound_select, handle_client_button, handle_online_refresh, handle_server_refresh, handle_qr_callback, handle_copy_callback, handle_copy_callback, handle_qr_callback, handle_panel_switch
 from handlers import is_admin, admin_panel_command, client_mode_command
 from database import db
@@ -140,7 +140,7 @@ def main() -> None:
     application.add_error_handler(error_handler)
 
     # Запускаем бота
-    logger.info(f"🤖 Бот запущен — {BOT_NAME}")
+    logger.info("🤖 Бот запущен — 🇷🇺 -SLK- 🇷🇺")
     
     import asyncio
     loop = asyncio.new_event_loop()
@@ -176,7 +176,7 @@ def main() -> None:
                     if body:
                         msg += f"{body[:300]}\n\n"
                     msg += f"Для обновления: <code>slk-menu</code> → Обновить"
-                    from config import BOT_NAME,  ADMIN_IDS
+                    from config import ADMIN_IDS
                     for admin_id in ADMIN_IDS:
                         try:
                             await application.bot.send_message(admin_id, msg, parse_mode='HTML')
