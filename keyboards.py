@@ -157,6 +157,7 @@ def create_settings_keyboard():
                 ["🔄 Автосброс", "🖥️ Мониторинг"],
         ["📰 SLK News"],
         ["📰 3x-ui News"],
+        ["🚀 Скорость сервера"],
                 ["⬅️ Назад в меню"]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)

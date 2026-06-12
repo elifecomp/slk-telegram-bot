@@ -905,6 +905,49 @@ async def panel_switch_old(update: Update, context: CallbackContext) -> None:
 
 
 
+async def server_speed_test(update: Update, context: CallbackContext) -> None:
+    """Проверка скорости сервера"""
+    if not is_admin(update.effective_user.id):
+        return
+    await update.message.reply_text("🚀 <b>Запускаю тест скорости...</b>\n⏳ Подождите ~20 секунд", parse_mode='HTML')
+    
+    import subprocess, re
+    try:
+        result = subprocess.run(
+            "curl -o /dev/null -s -w 'Download: %{speed_download} B/s\\nTime: %{time_total}s' http://speedtest.tele2.net/50MB.zip",
+            shell=True, capture_output=True, text=True, timeout=60
+        )
+        output = result.stdout
+        speed_match = re.search(r'Download: (\d+)', output)
+        time_match = re.search(r'Time: ([\d.]+)', output)
+        
+        if speed_match:
+            speed_bps = int(speed_match.group(1))
+            speed_mbps = speed_bps * 8 / 1000000
+            speed_mbs = speed_bps / 1000000
+            time_taken = time_match.group(1) if time_match else "?"
+            
+            if speed_mbps > 80:
+                emoji = "🟢"
+                comment = "Отличная скорость!"
+            elif speed_mbps > 30:
+                emoji = "🟡"
+                comment = "Хорошая скорость"
+            else:
+                emoji = "🔴"
+                comment = "Низкая скорость"
+            
+            msg = f"🚀 <b>СКОРОСТЬ СЕРВЕРА</b>\n\n"
+            msg += f"📥 Загрузка: <b>{speed_mbps:.1f} Mbps</b> ({speed_mbs:.1f} MB/s)\n"
+            msg += f"⏱ Время теста: {time_taken} сек\n\n"
+            msg += f"{emoji} {comment}"
+        else:
+            msg = "❌ Не удалось измерить скорость"
+    except Exception as e:
+        msg = f"❌ Ошибка: {e}"
+    
+    await update.message.reply_text(msg, parse_mode='HTML')
+
 async def settings_menu(update: Update, context: CallbackContext) -> None:
     """Меню настроек бота"""
     if not is_admin(update.effective_user.id):
@@ -5393,8 +5436,12 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
             await create_backup(update, context)
         elif message_text == "📰 3x-ui News":
             await show_changelog(update, context)
+        elif message_text == "🚀 Скорость сервера":
+            await server_speed_test(update, context)
         elif message_text == "📰 3x-ui News":
             await show_changelog(update, context)
+        elif message_text == "🚀 Скорость сервера":
+            await server_speed_test(update, context)
         elif message_text == "🔄 Автосброс":
             await auto_reset_status(update, context)
         elif message_text == "🔔 Уведомления":
