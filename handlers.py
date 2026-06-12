@@ -3409,7 +3409,7 @@ async def users_list(update: Update, context: CallbackContext) -> None:
         
         message = "👤 <b>Зарегистрированные пользователи</b>\n\n"
         message += f"📊 <b>Всего пользователей:</b> {len(users)}\n\n"
-        message += "🔍 <b>Выберите пользователя для управления:</b>"
+        message += "🔍 <b>Выберите пользователя или нажмите ➕ для добавления:</b>"
         
         await update.message.reply_text(message, reply_markup=keyboard, parse_mode=HTML)
     else:
@@ -3720,6 +3720,80 @@ async def confirm_user_delete(update: Update, context: CallbackContext) -> None:
         context.user_data['users_list'] = [u for u in users_list if u['id'] != selected_user['id']]
     else:
         await update.message.reply_text("❌ <b>Ошибка при удалении пользователя</b>", parse_mode=HTML)
+async def add_user_start(update: Update, context: CallbackContext) -> None:
+    """Начало добавления нового пользователя"""
+    if not is_admin(update.effective_user.id):
+        return
+    context.user_data['adding_user'] = {'step': 'login'}
+    await update.message.reply_text(
+        "➕ <b>ДОБАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯ</b>\n\n"
+        "Шаг 1/4: Введите <b>логин</b> пользователя:",
+        parse_mode='HTML'
+    )
+
+async def handle_add_user_input(update: Update, context: CallbackContext) -> None:
+    """Обрабатывает ввод данных при добавлении пользователя"""
+    if not is_admin(update.effective_user.id):
+        return
+    
+    adding = context.user_data.get('adding_user')
+    if not adding:
+        return
+    
+    text = update.message.text.strip()
+    
+    if text == "❌ Отмена":
+        context.user_data.pop('adding_user', None)
+        await update.message.reply_text("❌ Добавление отменено", parse_mode='HTML')
+        await users_list(update, context)
+        return
+    
+    step = adding.get('step')
+    
+    if step == 'login':
+        adding['login'] = text
+        adding['step'] = 'name'
+        await update.message.reply_text(
+            f"✅ Логин: <b>{text}</b>\n\n"
+            "Шаг 2/3: Введите <b>имя</b> пользователя:",
+            reply_markup=ReplyKeyboardMarkup([["❌ Отмена"]], resize_keyboard=True),
+            parse_mode='HTML'
+        )
+    elif step == 'name':
+        adding['name'] = text
+        adding['step'] = 'phone'
+        await update.message.reply_text(
+            f"✅ Имя: <b>{text}</b>\n\n"
+            "Шаг 3/3: Введите <b>номер телефона</b>:",
+            reply_markup=ReplyKeyboardMarkup([["❌ Отмена"]], resize_keyboard=True),
+            parse_mode='HTML'
+        )
+    elif step == 'phone':
+        adding['phone'] = text
+        
+        # Сохраняем в базу
+        from database import db
+        success = db.add_client(0, adding['login'], adding['phone'], adding['name'])
+        
+        if success:
+            await update.message.reply_text(
+                f"✅ <b>ПОЛЬЗОВАТЕЛЬ ДОБАВЛЕН!</b>\n\n"
+                f"👤 Логин: {adding['login']}\n"
+                f"📝 Имя: {adding['name']}\n"
+                f"📱 Телефон: {adding['phone']}",
+                reply_markup=create_admin_keyboard(),
+                parse_mode='HTML'
+            )
+        else:
+            await update.message.reply_text(
+                "❌ Ошибка при добавлении пользователя",
+                reply_markup=create_admin_keyboard(),
+                parse_mode='HTML'
+            )
+        
+        context.user_data.pop('adding_user', None)
+        context.user_data['state'] = BotState.MAIN_MENU
+
 async def back_to_users_list(update: Update, context: CallbackContext) -> None:
     """Возврат к списку пользователей"""
     await users_list(update, context)
@@ -5105,6 +5179,11 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         return
     
     # Обработка состояний регистрации
+    # Проверка - если админ добавляет пользователя
+    if context.user_data.get('adding_user'):
+        await handle_add_user_input(update, context)
+        return
+    
     if current_state == BotState.REGISTRATION_LOGIN:
         await handle_registration_login(update, context)
         return
@@ -5126,6 +5205,8 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
                 reply_markup=create_admin_keyboard(),
                 parse_mode=HTML
             )
+        elif message_text == "➕ Добавить пользователя":
+            await add_user_start(update, context)
         else:
             await user_detail(update, context)
         return
