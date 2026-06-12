@@ -142,6 +142,9 @@ SVCEOF
     systemctl daemon-reload
     systemctl enable SLV-bot
     systemctl start SLV-bot
+    
+    # Добавляем автоперезагрузку в 05:00 и 17:00
+    (crontab -l 2>/dev/null | grep -v "SLV-bot"; echo "0 5,17 * * * systemctl restart SLV-bot 2>/dev/null") | crontab -
     echo -e "${GREEN}✅ Бот установлен!${NC}"
     echo -e "${YELLOW}⚠️ Не забудьте настроить токены в меню!${NC}"
     read -p "Нажмите Enter..."
