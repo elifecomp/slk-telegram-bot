@@ -3770,17 +3770,30 @@ async def handle_add_user_input(update: Update, context: CallbackContext) -> Non
         )
     elif step == 'phone':
         adding['phone'] = text
+        adding['step'] = 'tg_id'
+        await update.message.reply_text(
+            f"✅ Телефон: <b>{text}</b>\n\n"
+            "Шаг 4/4: Введите <b>Telegram ID</b> (или 0 если нет):",
+            reply_markup=ReplyKeyboardMarkup([["❌ Отмена"]], resize_keyboard=True),
+            parse_mode='HTML'
+        )
+    elif step == 'tg_id':
+        try:
+            tg_id = int(text)
+        except:
+            tg_id = 0
+        adding['tg_id'] = tg_id
         
-        # Сохраняем в базу
         from database import db
-        success = db.add_client(0, adding['login'], adding['phone'], adding['name'])
+        success = db.add_client(tg_id, adding['login'], adding['phone'], adding['name'])
         
         if success:
             await update.message.reply_text(
                 f"✅ <b>ПОЛЬЗОВАТЕЛЬ ДОБАВЛЕН!</b>\n\n"
                 f"👤 Логин: {adding['login']}\n"
                 f"📝 Имя: {adding['name']}\n"
-                f"📱 Телефон: {adding['phone']}",
+                f"📱 Телефон: {adding['phone']}\n"
+                f"🆔 Telegram ID: {tg_id}",
                 reply_markup=create_admin_keyboard(),
                 parse_mode='HTML'
             )
