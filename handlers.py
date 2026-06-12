@@ -906,31 +906,42 @@ async def panel_switch_old(update: Update, context: CallbackContext) -> None:
 
 
 async def server_speed_test(update: Update, context: CallbackContext) -> None:
-    """Проверка скорости сервера"""
+    """Проверка скорости сервера (загрузка + отдача)"""
     if not is_admin(update.effective_user.id):
         return
     await update.message.reply_text("🚀 <b>Запускаю тест скорости...</b>\n⏳ Подождите ~20 секунд", parse_mode='HTML')
     
-    import subprocess, re
+    import subprocess, re, os
     try:
-        result = subprocess.run(
-            "curl -o /dev/null -s -w 'Download: %{speed_download} B/s\\nTime: %{time_total}s' http://speedtest.tele2.net/50MB.zip",
+        # Тест загрузки
+        dl = subprocess.run(
+            "curl -o /dev/null -s -w '%{speed_download}' http://speedtest.tele2.net/50MB.zip",
             shell=True, capture_output=True, text=True, timeout=60
         )
-        output = result.stdout
-        speed_match = re.search(r'Download: (\d+)', output)
-        time_match = re.search(r'Time: ([\d.]+)', output)
+        dl_speed = int(dl.stdout.strip()) if dl.stdout.strip().isdigit() else 0
         
-        if speed_match:
-            speed_bps = int(speed_match.group(1))
-            speed_mbps = speed_bps * 8 / 1000000
-            speed_mbs = speed_bps / 1000000
-            time_taken = time_match.group(1) if time_match else "?"
+        # Тест отдачи
+        # Создаём файл 5MB для отправки
+        os.system("dd if=/dev/urandom of=/tmp/speedtest.bin bs=1M count=5 2>/dev/null")
+        ul = subprocess.run(
+            "curl -o /dev/null -s -w '%{speed_upload}' -F 'file=@/tmp/speedtest.bin' https://file.io",
+            shell=True, capture_output=True, text=True, timeout=30
+        )
+        ul_speed = int(ul.stdout.strip()) if ul.stdout.strip().isdigit() else 0
+        os.system("rm -f /tmp/speedtest.bin")
+        
+        if dl_speed > 0:
+            dl_mbps = dl_speed * 8 / 1000000
+            dl_mbs = dl_speed / 1000000
+            ul_mbps = ul_speed * 8 / 1000000
+            ul_mbs = ul_speed / 1000000
             
-            if speed_mbps > 80:
+            # Оценка скорости
+            avg_mbps = (dl_mbps + ul_mbps) / 2
+            if avg_mbps > 80:
                 emoji = "🟢"
                 comment = "Отличная скорость!"
-            elif speed_mbps > 30:
+            elif avg_mbps > 30:
                 emoji = "🟡"
                 comment = "Хорошая скорость"
             else:
@@ -938,8 +949,8 @@ async def server_speed_test(update: Update, context: CallbackContext) -> None:
                 comment = "Низкая скорость"
             
             msg = f"🚀 <b>СКОРОСТЬ СЕРВЕРА</b>\n\n"
-            msg += f"📥 Загрузка: <b>{speed_mbps:.1f} Mbps</b> ({speed_mbs:.1f} MB/s)\n"
-            msg += f"⏱ Время теста: {time_taken} сек\n\n"
+            msg += f"📥 Загрузка: <b>{dl_mbps:.1f} Mbps</b> ({dl_mbs:.1f} MB/s)\n"
+            msg += f"📤 Отдача: <b>{ul_mbps:.1f} Mbps</b> ({ul_mbs:.1f} MB/s)\n\n"
             msg += f"{emoji} {comment}"
         else:
             msg = "❌ Не удалось измерить скорость"
