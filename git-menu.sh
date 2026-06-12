@@ -45,6 +45,11 @@ while true; do
             echo "$ver" > version.txt
             today=$(date '+%d.%m.%Y')
             sed -i "4i ## v$ver ($today)\n- $changes\n" CHANGELOG.md
+            
+            # Обновляем BOT_VERSION в handlers.py
+            sed -i 's/BOT_VERSION = "v[^"]*"/BOT_VERSION = "v$ver"/' handlers.py
+            echo "✅ BOT_VERSION обновлён до v$ver"
+            
             git add -A
             git commit -m "v$ver - $changes"
             git tag -a "v$ver" -m "v$ver - $changes"
