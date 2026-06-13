@@ -4764,20 +4764,12 @@ async def handle_qr_callback(update: Update, context: CallbackContext) -> None:
     
     def get_sub_data():
         try:
-            from xui_api import get_inbounds_list
-            import json
-            inbounds = get_inbounds_list()
-            for inbound in inbounds:
-                settings = inbound.get('settings', {})
-                if isinstance(settings, str):
-                    try:
-                        settings = json.loads(settings) if settings.strip() else {}
-                    except:
-                        settings = {}
-                if isinstance(settings, dict):
-                    for c in settings.get('clients', []):
-                        if c.get('email') == client['login']:
-                            return c.get('subId')
+            from xui_api import _get
+            r = _get('/panel/api/clients/list')
+            if r.get('success'):
+                for c in r.get('obj', []):
+                    if c.get('email') == client['login']:
+                        return c.get('subId')
             return None
         except:
             return None
@@ -4788,10 +4780,29 @@ async def handle_qr_callback(update: Update, context: CallbackContext) -> None:
         return
     
     if query.data == "qr_sub":
-        link = f"{SUBSCRIPTION_URL}/sub/{SUBSCRIPTION_EXTRA_PATH}/{sub_id}"
+        from xui_api import get_sub_settings
+        sub_set = get_sub_settings()
+        sub_port = sub_set.get('sub_port', 8543)
+        sub_path = sub_set.get('sub_path', '/sub/')
+        sub_dom = sub_set.get('sub_domain', '') or sub_set.get('web_domain', '')
+        if not sub_dom:
+            import os
+            cert_path = sub_set.get('cert_path', '')
+            if cert_path:
+                parts = os.path.dirname(cert_path).split('/')
+                sub_dom = parts[-1] if parts[-1] and '.' in parts[-1] else ''
+        if not sub_dom:
+            import subprocess as sp
+            try:
+                r = sp.run("curl -s -4 ifconfig.me 2>/dev/null", shell=True, capture_output=True, text=True, timeout=5)
+                sub_dom = r.stdout.strip()
+            except:
+                pass
+        host = sub_dom if sub_dom else '127.0.0.1'
+        link = f"https://{host}:{sub_port}{sub_path}{sub_id}"
         label = "Обычная подписка"
     else:
-        link = f"{SUBSCRIPTION_URL}/json/{SUBSCRIPTION_JSON_PATH}/{sub_id}"
+        link = f"https://{host}:{sub_port}{sub_path}{sub_id}"  # JSON
         label = "JSON подписка"
     
     # Генерируем QR
