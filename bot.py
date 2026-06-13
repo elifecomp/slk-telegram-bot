@@ -154,6 +154,17 @@ def main() -> None:
     
     # Запускаем фоновую проверку обновлений
     loop.create_task(traffic_monitor(application))
+        # Запускаем бэкап панели раз в сутки
+    async def panel_backup_task():
+        await asyncio.sleep(60)
+        while True:
+            now = __import__('datetime').datetime.now()
+            if now.hour == 1 and now.minute == 0:
+                import subprocess
+                subprocess.run(['bash', '/opt/SLV_Bot/panel_backup.sh'], capture_output=True)
+                await asyncio.sleep(3600)  # ждём час чтобы не повторить
+            await asyncio.sleep(30)
+    loop.create_task(panel_backup_task())
     loop.create_task(check_bot_updates())
     
     # Проверяем обновления сразу при старте
