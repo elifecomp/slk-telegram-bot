@@ -1370,7 +1370,7 @@ async def del_server(update: Update, context: CallbackContext) -> None:
 # ==================== ПРОВЕРКА ОБНОВЛЕНИЙ БОТА ====================
 import asyncio as asyncio_bot_upd
 
-BOT_VERSION = "v1.4.0"
+BOT_VERSION = "v1.3.18"
 GITHUB_RAW = "https://raw.githubusercontent.com/elifecomp/slk-telegram-bot/main"
 
 async def check_bot_updates():
@@ -2099,21 +2099,7 @@ async def handle_client_button(update: Update, context: CallbackContext) -> None
                         sub_id = sc.get('subId', '')
                         if sub_id:
                             message += f"📋 <b>Sub ID:</b> <code>{sub_id}</code>\n"
-                            # Получаем ссылку через API панели
-                            from xui_api import get_sub_settings
-                            sub_set = get_sub_settings()
-                            sub_port = sub_set.get('sub_port', 8543)
-                            sub_path = sub_set.get('sub_path', '/sub/')
-                            sub_dom = sub_set.get('sub_domain', '') or sub_set.get('web_domain', '')
-                            if not sub_dom:
-                                import os
-                                cp = sub_set.get('cert_path', '')
-                                if cp:
-                                    pts = os.path.dirname(cp).split('/')
-                                    sub_dom = pts[-1] if pts[-1] and '.' in pts[-1] else ''
-                            host = sub_dom if sub_dom else '144.31.133.182'
-                            sub_link = f"https://{host}:{sub_port}{sub_path}{sub_id}"
-                            message += f"🔗 <b>Ссылка:</b> <code>{sub_link}</code>\n"
+                            message += f"🔗 <b>Ссылка:</b> <code>{SUBSCRIPTION_URL}/sub/{SUBSCRIPTION_EXTRA_PATH}/{sub_id}</code>\n"
                         break
         except:
             pass
@@ -4649,21 +4635,12 @@ async def link(update: Update, context: CallbackContext) -> None:
                         if isinstance(xui_client, dict) and xui_client.get('email') == client['login']:
                             sub_id = xui_client.get('subId')
                             if sub_id:
-                                # Формируем ссылку подписки через API панели
-                                from xui_api import get_sub_settings
-                                sub_set = get_sub_settings()
-                                sub_port = sub_set.get('sub_port', 8543)
-                                sub_path = sub_set.get('sub_path', '/sub/')
-                                sub_domain = sub_set.get('sub_domain', '') or sub_set.get('web_domain', '')
-                                if not sub_domain:
-                                    import os
-                                    cert_path = sub_set.get('cert_path', '')
-                                    if cert_path:
-                                        parts = os.path.dirname(cert_path).split('/')
-                                        sub_domain = parts[-1] if parts[-1] and '.' in parts[-1] else ''
-                                host = sub_domain if sub_domain else '144.31.133.182'
-                                sub_link = f"https://{host}:{sub_port}{sub_path}{sub_id}"
-                                return sub_link, sub_id
+                                # Получаем ссылки через API панели
+                                from xui_api import get_sub_links_new
+                                links = get_sub_links_new(sub_id)
+                                if links:
+                                    sub_link = links[0] if isinstance(links, list) else str(links)
+                                    return sub_link, sub_id
                                 return None, None
             return None, None
         except Exception as e:
@@ -4682,14 +4659,14 @@ async def link(update: Update, context: CallbackContext) -> None:
         try:
             from config import BOT_NAME, SUBSCRIPTION_JSON_PATH
             if SUBSCRIPTION_JSON_PATH:
-                json_link = ""  # JSON ссылка теперь через API
+                json_link = f"{SUBSCRIPTION_URL}/json/{SUBSCRIPTION_JSON_PATH}/{sub_id}"
         except:
             pass
         
         # Inline-кнопки
         keyboard = []
         if subscription_link:
-            keyboard.append([InlineKeyboardButton("📋 Открыть подписку", url=subscription_link)])
+            keyboard.append([InlineKeyboardButton("📋 Открыть подписку", url=f"{SUBSCRIPTION_URL}/sub/{SUBSCRIPTION_EXTRA_PATH}/{sub_id}")])
         
         
         

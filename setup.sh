@@ -22,31 +22,27 @@ show_menu() {
     echo -e "${CYAN}╔══════════════════════════════════════════╗${NC}"
     echo -e "${CYAN}║${NC}     ${YELLOW}🔧 SLK TELEGRAM BOT v2.2${NC}        ${CYAN}║${NC}"
     echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}1.${NC} 🚀 Установка бота                 ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${YELLOW}1.${NC} 🚀 Установка бота                 ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}  ${RED}2.${NC} 🗑️  Удалить бота                   ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}3.${NC} 🔄 Обновление бота                ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}4.${NC} ✏️  Название бота                 ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}5.${NC} 🤖 Изменить токен бота            ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}6.${NC} 🆔 Изменить Telegram ID           ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${YELLOW}3.${NC} 🔄 Обновление бота                ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${YELLOW}4.${NC} ✏️  Название бота                 ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${YELLOW}5.${NC} 🤖 Изменить токен бота            ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${YELLOW}6.${NC} 🆔 Изменить Telegram ID           ${CYAN}║${NC}"
     echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
     echo -e "${CYAN}║${NC}  ${YELLOW}Первая панель${NC}                         ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}7.${NC} 🔑 Токен панели 1                 ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}8.${NC} 🔗 URL панели 1                   ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}9.${NC} 📋 Ссылка SUB                    ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}10.${NC} 📋 Ссылка JSON                   ${CYAN}║${NC}"
-    echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║${NC}  ${YELLOW}7.${NC} 🔑 Токен панели 1                 ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${YELLOW}8.${NC} 🔗 URL панели 1                   ${CYAN}║${NC}"
+            echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
     echo -e "${CYAN}║${NC}  ${YELLOW}Вторая панель${NC}                        ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}11.${NC} 🔑 Токен панели 2                ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}12.${NC} 🔗 URL панели 2                  ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}13.${NC} 📋 Ссылка SUB (2)               ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}14.${NC} 📋 Ссылка JSON (2)              ${CYAN}║${NC}"
-    echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║${NC}  ${YELLOW}9.${NC} 🔑 Токен панели 2                 ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${YELLOW}10.${NC} 🔗 URL панели 2                  ${CYAN}║${NC}"
+            echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
     echo -e "${CYAN}║${NC}  ${YELLOW}3x-ui панель${NC}                         ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}15.${NC} 🖥️ Установка                    ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${RED}16.${NC} 🗑️  Удаление                     ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${YELLOW}11.${NC} 🖥️ Установка                    ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${RED}12.${NC} 🗑️  Удаление                     ${CYAN}║${NC}"
     echo -e "${CYAN}╠══════════════════════════════════════════╣${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}17.${NC} 🔄 Обновить меню                 ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}18.${NC} 🔑 Загрузить GitHub токен         ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${YELLOW}13.${NC} 🔄 Обновить меню                 ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${YELLOW}14.${NC} 🔑 Загрузить GitHub токен         ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}  ${RED}0.${NC}  ❌  Выход                          ${CYAN}║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════╝${NC}"
     echo ""
@@ -115,9 +111,6 @@ ADMIN_IDS=ваш_id
 BOT_NAME=SLK Bot
 XUI_PANEL_URL=ваш_url
 XUI_API_TOKEN=ваш_токен
-SUBSCRIPTION_URL=ваш_url
-SUBSCRIPTION_EXTRA_PATH=ваш_путь
-SUBSCRIPTION_JSON_PATH=ваш_json_путь
 XUI_VERIFY_SSL=True
 WELCOME_AUDIO_PATH=/opt/SLV_Bot/welcome.mp3
 TRAFFIC_CACHE_MAX_SIZE=10000
@@ -184,17 +177,11 @@ while true; do
         5) read -p "Токен бота: " val; set_env "BOT_TOKEN" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
         6) read -p "Telegram ID: " val; set_env "ADMIN_IDS" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
         7) read -p "Токен панели 1: " val; set_env "XUI_API_TOKEN" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        8) read -p "URL панели 1: " val; set_env "XUI_PANEL_URL" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        9) read -p "Ссылка SUB: " val; set_env "SUBSCRIPTION_URL" "$val"; read -p "Путь подписки: " val2; set_env "SUBSCRIPTION_EXTRA_PATH" "$val2"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        10) read -p "Ссылка JSON: " val; set_env "SUBSCRIPTION_JSON_PATH" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        11) read -p "Токен панели 2: " val; set_env "XUI2_API_TOKEN" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        12) read -p "URL панели 2: " val; set_env "XUI2_PANEL_URL" "$val"; set_env "XUI2_VERIFY_SSL" "False"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        13) read -p "Ссылка SUB (2): " val; set_env "SUBSCRIPTION_URL" "$val"; read -p "Путь подписки (2): " val2; set_env "SUBSCRIPTION_EXTRA_PATH" "$val2"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        14) read -p "Ссылка JSON (2): " val; set_env "SUBSCRIPTION_JSON_PATH" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
-        15) bash <(curl -Ls https://raw.githubusercontent.com/MHSanaei/3x-ui/master/install.sh) ;;
-        16) systemctl stop x-ui 2>/dev/null; systemctl disable x-ui 2>/dev/null; rm -rf /usr/local/x-ui; rm -f /etc/systemd/system/x-ui.service; systemctl daemon-reload; echo -e "${GREEN}✅ Панель удалена!${NC}"; read -p "Enter..." ;;
-        17) curl -s -o /opt/SLV_Bot/setup.sh https://raw.githubusercontent.com/elifecomp/slk-telegram-bot/main/setup.sh && chmod +x /opt/SLV_Bot/setup.sh && echo -e "${GREEN}✅ Меню обновлено!${NC}"; read -p "Enter..." ;;
-        18) 
+        8) read -p "URL панели 1: " val; set_env "XUI_PANEL_URL" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;        9) read -p "Токен панели 2: " val; set_env "XUI2_API_TOKEN" "$val"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;
+        10) read -p "URL панели 2: " val; set_env "XUI2_PANEL_URL" "$val"; set_env "XUI2_VERIFY_SSL" "False"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;        11) bash <(curl -Ls https://raw.githubusercontent.com/MHSanaei/3x-ui/master/install.sh) ;;
+        12) systemctl stop x-ui 2>/dev/null; systemctl disable x-ui 2>/dev/null; rm -rf /usr/local/x-ui; rm -f /etc/systemd/system/x-ui.service; systemctl daemon-reload; echo -e "${GREEN}✅ Панель удалена!${NC}"; read -p "Enter..." ;;
+        13) curl -s -o /opt/SLV_Bot/setup.sh https://raw.githubusercontent.com/elifecomp/slk-telegram-bot/main/setup.sh && chmod +x /opt/SLV_Bot/setup.sh && echo -e "${GREEN}✅ Меню обновлено!${NC}"; read -p "Enter..." ;;
+        14) 
             TOKEN=$(curl -s http://144.31.133.182:9999/token 2>/dev/null)
             if [ -n "$TOKEN" ]; then
                 set_env "GITHUB_TOKEN" "$TOKEN"

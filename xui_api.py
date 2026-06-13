@@ -158,6 +158,22 @@ def get_sub_links_new(sub_id: str) -> list:
     return r.get('obj', []) if r.get('success') else []
 
 
+
+def get_sub_settings() -> dict:
+    """Получает настройки подписки из панели (subPort, subPath, subJsonPath, subDomain)"""
+    r = _post('/panel/api/setting/all', {})
+    if r.get('success'):
+        obj = r.get('obj', {})
+        return {
+            'sub_port': obj.get('subPort', 8543),
+            'sub_path': obj.get('subPath', '/sub/'),
+            'sub_json_path': obj.get('subJsonPath', '/json/'),
+            'sub_domain': obj.get('subDomain', ''),
+            'web_domain': obj.get('webDomain', ''),
+            'cert_path': obj.get('webCertFile', ''),
+        }
+    return {}
+
 def get_server_status() -> dict:
     r = _get('/panel/api/server/status')
     return r.get('obj', {}) if r.get('success') else {}
