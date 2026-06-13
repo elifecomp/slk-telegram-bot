@@ -36,7 +36,7 @@ async def traffic_monitor(app):
                 save_notified([])
                 logger.info("🔄 Новый месяц — список уведомлений сброшен")
             
-            # Получаем клиентов через API (новый способ)
+            # Получаем клиентов через API
             from xui_api import _get
             r = _get('/panel/api/clients/list')
             if not r.get('success'):
@@ -50,15 +50,25 @@ async def traffic_monitor(app):
             
             for client in clients:
                 email = client.get('email', '')
-                total_gb = client.get('totalGB', 0)
+                if email == 'Admin':
+                    continue  # админа пропускаем
                 
-                if total_gb <= 0:
+                # Получаем трафик через отдельный API
+                traffic = _get(f'/panel/api/clients/traffic/{email}')
+                if not traffic.get('success'):
+                    continue
+                
+                traffic_data = traffic.get('obj', {})
+                total_bytes = traffic_data.get('total', 0)
+                
+                if total_bytes <= 0:
                     continue  # безлимит
                 
-                # Трафик из API: usedTraffic в байтах
-                used = client.get('usedTraffic', 0)
+                up = traffic_data.get('up', 0)
+                down = traffic_data.get('down', 0)
+                used = up + down
                 used_gb = used / (1024**3)
-                total_gb_val = total_gb / (1024**3)
+                total_gb_val = total_bytes / (1024**3)
                 percent = (used_gb / total_gb_val) * 100 if total_gb_val > 0 else 0
                     
                     if percent >= THRESHOLD_PERCENT and email not in notified:
