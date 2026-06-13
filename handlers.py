@@ -4674,7 +4674,14 @@ async def link(update: Update, context: CallbackContext) -> None:
                                     if cert_path:
                                         parts = os.path.dirname(cert_path).split('/')
                                         sub_domain = parts[-1] if parts[-1] and '.' in parts[-1] else ''
-                                host = sub_domain
+                                if not sub_domain:
+                                    import subprocess as sp
+                                    try:
+                                        r = sp.run("curl -s -4 ifconfig.me 2>/dev/null", shell=True, capture_output=True, text=True, timeout=5)
+                                        sub_domain = r.stdout.strip()
+                                    except:
+                                        pass
+                                host = sub_domain if sub_domain else '127.0.0.1'
                                 sub_link = f"https://{host}:{sub_port}{sub_path}{sub_id}"
                                 return sub_link, sub_id
                                 return None, None
