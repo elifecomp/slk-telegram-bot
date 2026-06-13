@@ -2114,10 +2114,10 @@ async def handle_client_button(update: Update, context: CallbackContext) -> None
                             host = sub_dom
                             if not host:
                                 try:
-                                    # Получаем внешний IP сервера
+                                    # Получаем внешний IPv4 сервера
                                     import subprocess
                                     result = subprocess.run(
-                                        "curl -s ifconfig.me 2>/dev/null || curl -s icanhazip.com 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}'",
+                                        "curl -s -4 ifconfig.me 2>/dev/null || curl -s -4 icanhazip.com 2>/dev/null || curl -s -4 ipinfo.io/ip 2>/dev/null",
                                         shell=True, capture_output=True, text=True, timeout=5
                                     )
                                     host = result.stdout.strip()
