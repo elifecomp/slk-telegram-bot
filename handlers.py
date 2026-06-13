@@ -4674,7 +4674,7 @@ async def link(update: Update, context: CallbackContext) -> None:
                                     if cert_path:
                                         parts = os.path.dirname(cert_path).split('/')
                                         sub_domain = parts[-1] if parts[-1] and '.' in parts[-1] else ''
-                                host = sub_domain if sub_domain else '144.31.133.182'
+                                host = sub_domain
                                 sub_link = f"https://{host}:{sub_port}{sub_path}{sub_id}"
                                 return sub_link, sub_id
                                 return None, None
