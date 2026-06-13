@@ -25,7 +25,11 @@ class Database:
                     phone TEXT NOT NULL,
                     name TEXT NOT NULL,
                     registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    is_active BOOLEAN DEFAULT TRUE
+                    is_active BOOLEAN DEFAULT TRUE,
+                    login2 TEXT,
+                    birthday TEXT,
+                    hwid TEXT,
+                    city TEXT
                 )
             ''')
 
