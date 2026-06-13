@@ -36,38 +36,30 @@ async def traffic_monitor(app):
                 save_notified([])
                 logger.info("🔄 Новый месяц — список уведомлений сброшен")
             
-            # Получаем клиентов из панели
-            inbounds = get_inbounds_list()
+            # Получаем клиентов через API (новый способ)
+            from xui_api import _get
+            r = _get('/panel/api/clients/list')
+            if not r.get('success'):
+                await asyncio.sleep(3600)
+                continue
+            
+            clients = r.get('obj', [])
             notified = get_notified()
             new_notified = set()
             alerts = []
             
-            for inbound in inbounds:
-                settings = inbound.get('settings', {})
-                if isinstance(settings, str):
-                    import json
-                    try:
-                        settings = json.loads(settings) if settings.strip() else {}
-                    except:
-                        settings = {}
+            for client in clients:
+                email = client.get('email', '')
+                total_gb = client.get('totalGB', 0)
                 
-                if not isinstance(settings, dict):
-                    continue
-                    
-                for client in settings.get('clients', []):
-                    email = client.get('email', '')
-                    total_gb = client.get('totalGB', 0)
-                    
-                    if total_gb <= 0:
-                        continue  # безлимит
-                    
-                    # Трафик: up + down
-                    up = client.get('up', 0)
-                    down = client.get('down', 0)
-                    used = up + down
-                    used_gb = used / (1024**3)
-                    total_gb_val = total_gb / (1024**3)
-                    percent = (used_gb / total_gb_val) * 100 if total_gb_val > 0 else 0
+                if total_gb <= 0:
+                    continue  # безлимит
+                
+                # Трафик из API: usedTraffic в байтах
+                used = client.get('usedTraffic', 0)
+                used_gb = used / (1024**3)
+                total_gb_val = total_gb / (1024**3)
+                percent = (used_gb / total_gb_val) * 100 if total_gb_val > 0 else 0
                     
                     if percent >= THRESHOLD_PERCENT and email not in notified:
                         alerts.append({
