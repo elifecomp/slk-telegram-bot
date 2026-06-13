@@ -2111,7 +2111,20 @@ async def handle_client_button(update: Update, context: CallbackContext) -> None
                                 if cp:
                                     pts = os.path.dirname(cp).split('/')
                                     sub_dom = pts[-1] if pts[-1] and '.' in pts[-1] else ''
-                            host = sub_dom if sub_dom else '144.31.133.182'
+                            host = sub_dom
+                            if not host:
+                                try:
+                                    # Получаем внешний IP сервера
+                                    import subprocess
+                                    result = subprocess.run(
+                                        "curl -s ifconfig.me 2>/dev/null || curl -s icanhazip.com 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}'",
+                                        shell=True, capture_output=True, text=True, timeout=5
+                                    )
+                                    host = result.stdout.strip()
+                                except:
+                                    pass
+                            if not host:
+                                host = '144.31.133.182'
                             sub_link = f"https://{host}:{sub_port}{sub_path}{sub_id}"
                             message += f"🔗 <b>Ссылка:</b> <code>{sub_link}</code>\n"
                         break
