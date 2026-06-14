@@ -2,6 +2,7 @@
 """Авто-поздравление с днём рождения"""
 
 import logging
+from config import BOT_NAME
 import asyncio
 import random
 from datetime import datetime
