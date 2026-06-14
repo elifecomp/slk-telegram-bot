@@ -9,3 +9,4 @@ backups/
 servers.txt
 *.bak
 *.bak2
+.traffic_notified
