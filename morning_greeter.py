@@ -5,6 +5,7 @@ import logging
 import asyncio
 import random
 from datetime import datetime
+from config import BOT_NAME
 
 logger = logging.getLogger(__name__)
 
