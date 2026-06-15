@@ -928,10 +928,31 @@ async def server_speed_test(update: Update, context: CallbackContext) -> None:
             dl_speed = dl_match.group(1) if dl_match else "?"
             ul_speed = ul_match.group(1) if ul_match else "?"
             
+            # Информация о провайдере
+            isp = ""
+            server = ""
+            try:
+                result2 = subprocess.run(
+                    "speedtest-cli 2>/dev/null | grep -E 'Hosted by|Testing from'",
+                    shell=True, capture_output=True, text=True, timeout=60
+                )
+                for line in result2.stdout.split('\n'):
+                    if 'Hosted by' in line:
+                        server = line.strip()
+                    if 'Testing from' in line:
+                        isp = line.split('(')[1].split(')')[0] if '(' in line else line.strip()
+            except:
+                pass
+            
             msg = f"🚀 <b>SPEEDTEST СЕРВЕРА</b>\n\n"
             msg += f"📡 Пинг: <b>{ping} ms</b>\n"
             msg += f"📥 Загрузка: <b>{dl_speed} Mbps</b>\n"
-            msg += f"📤 Отдача: <b>{ul_speed} Mbps</b>\n\n"
+            msg += f"📤 Отдача: <b>{ul_speed} Mbps</b>\n"
+            if isp:
+                msg += f"🖥 Провайдер: <b>{isp}</b>\n"
+            if server:
+                msg += f"📍 Сервер: <b>{server}</b>\n"
+            msg += "\n"
             
             try:
                 dl_val = float(dl_speed) if dl_speed != "?" else 0
