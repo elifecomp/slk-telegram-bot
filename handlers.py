@@ -24,7 +24,7 @@ from keyboards import (
     create_groups_keyboard, create_group_actions_keyboard,
     create_settings_keyboard,
     create_panel_switch_keyboard,
-    create_admin_keyboard, create_user_keyboard, 
+    create_admin_keyboard, create_user_keyboard,
     create_inbounds_keyboard, create_clients_keyboard, create_client_detail_keyboard,
     create_users_list_keyboard, create_user_actions_keyboard, create_edit_confirmation_keyboard,
     create_cancel_keyboard, create_users_for_message_keyboard,
@@ -32,7 +32,7 @@ from keyboards import (
 )
 from panel_manager import get_active_panel, get_panel_name
 from xui_api import (
-    get_inbounds_list, get_client_online_status, get_client_last_seen, 
+    get_inbounds_list, get_client_online_status, get_client_last_seen,
     get_client_connection_status, delete_client_by_email, reset_client_traffic,
     get_online_clients, get_last_online
 )
@@ -49,17 +49,17 @@ async def sync_logins(update: Update, context: CallbackContext) -> None:
     """Синхронизирует логины из панели в базу"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     await update.message.reply_text("🔄 Синхронизирую логины из панели...")
-    
+
     def do_sync():
         import sqlite3, json
         from xui_api import get_inbounds_list
         from panel_manager import get_panels_list, set_active_panel, get_active_panel
-        
+
         original = get_active_panel()['id']
         updated = 0
-        
+
         for panel in get_panels_list():
             set_active_panel(panel['id'])
             inbounds = get_inbounds_list()
@@ -81,33 +81,33 @@ async def sync_logins(update: Update, context: CallbackContext) -> None:
                                 updated += 1
                         conn.commit()
                         conn.close()
-        
+
         set_active_panel(original)
         return updated
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(do_sync)
         count = future.result()
-    
+
     await update.message.reply_text(f"✅ Синхронизировано: {count} логинов")
 
 async def start(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
     user_id = user.id
-    
+
     # Сбрасываем состояние пользователя
     context.user_data.clear()
-    
+
     # Отправляем стикер при старте
     try:
         sticker_file_id = "CAACAgIAAxkBAAI1kGohnJ35qnpyMFwhA4EfjgeEfI6TAAINDgACbTF5SQS2aZWlIIItOwQ"
         await update.message.reply_sticker(sticker_file_id)
     except Exception as e:
         logger.warning(f"Не удалось отправить стикер: {e}")
-    
+
     # Небольшая задержка перед текстом
     await asyncio.sleep(0.5)
-    
+
     if is_admin(user_id):
         welcome_text = f"""⚡ <b>Привет, {user.first_name}!</b>
 
@@ -115,7 +115,7 @@ async def start(update: Update, context: CallbackContext) -> None:
    <i>Админ-панель</i>
 
 👇 <b>Выберите действие:</b>"""
-        
+
         await update.message.reply_text(
             welcome_text,
             reply_markup=create_admin_keyboard(),
@@ -127,7 +127,7 @@ async def start(update: Update, context: CallbackContext) -> None:
         if db.client_exists(user_id):
             client = db.get_client_by_telegram_id(user_id)
             welcome_text = f"⚡ <b>Здравствуйте, {user.first_name}!</b>"
-            
+
             if client:
                 bd = client.get("birthday", "")
                 if bd:
@@ -136,7 +136,7 @@ async def start(update: Update, context: CallbackContext) -> None:
                         zodiac = get_zodiac(int(b_day), int(b_month))
                         welcome_text += f"\n\n🎂 <b>День рождения:</b> {bd}\n   {zodiac}"
                     except: pass
-            
+
             # IP, страна, город, оператор (DaData + ip-api)
             try:
                 from xui_api import get_client_ips
@@ -146,7 +146,7 @@ async def start(update: Update, context: CallbackContext) -> None:
                     ip = str(ips[0]).split(' ')[0].strip()
                     if ip and '.' in ip:
                         welcome_text += f"\n\n🌐 <b>IP:</b> <code>{ip}</code>"
-                        
+
                         # Город и регион через DaData
                         try:
                             r = req.get(
@@ -164,7 +164,7 @@ async def start(update: Update, context: CallbackContext) -> None:
                                 if city and city != region:
                                     welcome_text += f"\n🏙️ <b>Город:</b> {city}"
                         except: pass
-                        
+
                         # Страна и оператор через ip-api
                         try:
                             r = req.get(f"http://ip-api.com/json/{ip}?fields=country,isp", timeout=3)
@@ -179,9 +179,9 @@ async def start(update: Update, context: CallbackContext) -> None:
                                     welcome_text += f"\n📡 <b>Оператор:</b> {isp}"
                         except: pass
             except: pass
-            
+
             welcome_text += "\n\n👇 <b>Выберите действие:</b>"
-            
+
             await update.message.reply_text(
                 welcome_text,
                 reply_markup=create_user_keyboard(),
@@ -199,7 +199,7 @@ async def play_welcome_audio(update: Update, context: CallbackContext) -> None:
     """Воспроизводит приветственное аудио перед регистрацией"""
     try:
         await update.message.reply_text("🎵 Загружаю приветственное сообщение...")
-        
+
         audio_file_path = None
         possible_paths = [
             WELCOME_AUDIO_PATH,
@@ -210,13 +210,13 @@ async def play_welcome_audio(update: Update, context: CallbackContext) -> None:
             os.path.join(os.getcwd(), 'welcome.mp3'),
             '/root/vpn_bot/welcome.mp3',
         ]
-        
+
         for path in possible_paths:
             if path and os.path.exists(path):
                 audio_file_path = path
                 logger.info(f"✅ Найден аудиофайл: {path}")
                 break
-        
+
         if audio_file_path:
             try:
                 with open(audio_file_path, 'rb') as audio_file:
@@ -233,13 +233,13 @@ async def play_welcome_audio(update: Update, context: CallbackContext) -> None:
                 logger.error(f"❌ Ошибка при отправке аудио из {audio_file_path}: {e}")
         else:
             logger.error(f"❌ Аудиофайл не найден! Искали в: {possible_paths}")
-            
+
             await update.message.reply_text(
                 "🎵 Приветственное аудиосообщение временно недоступно.\n"
                 "Пожалуйста, продолжайте регистрацию.",
                 parse_mode=HTML
             )
-            
+
     except Exception as e:
         logger.error(f"❌ Критическая ошибка при отправке аудио: {e}")
         await update.message.reply_text(
@@ -254,14 +254,14 @@ async def start_registration(update: Update, context: CallbackContext) -> None:
 👋 Давай мы с тобой познакомимся
 
 💫 <b>Придумай Логин:</b>"""
-    
+
     await update.message.reply_text(welcome_text, parse_mode=HTML)
     context.user_data['state'] = BotState.REGISTRATION_LOGIN
     context.user_data['registration_data'] = {}
 async def handle_registration_login(update: Update, context: CallbackContext) -> None:
     """Обработка ввода логина"""
     login = update.message.text.strip()
-    
+
     if len(login) < 2 or len(login) > 30:
         await update.message.reply_text(
             "❌ <b>Логин должен быть от 2 до 30 символов.</b>\n\n"
@@ -269,10 +269,10 @@ async def handle_registration_login(update: Update, context: CallbackContext) ->
             parse_mode=HTML
         )
         return
-    
+
     context.user_data['registration_data']['login'] = login
     context.user_data['state'] = BotState.REGISTRATION_PHONE
-    
+
     await update.message.reply_text(
         "✅ <b>Отлично! Логин принят.</b>\n\n"
         "📱 <b>Теперь введи номер телефона в формате:</b>\n"
@@ -283,7 +283,7 @@ async def handle_registration_login(update: Update, context: CallbackContext) ->
 async def handle_registration_phone(update: Update, context: CallbackContext) -> None:
     """Обработка ввода телефона"""
     phone = update.message.text.strip()
-    
+
     if not re.match(r'^(\+79\d{9}|\+9936\d{8})$', phone):
         await update.message.reply_text(
             "❌ <b>Неверный формат номера телефона.</b>\n\n"
@@ -293,10 +293,10 @@ async def handle_registration_phone(update: Update, context: CallbackContext) ->
             parse_mode=HTML
         )
         return
-    
+
     context.user_data['registration_data']['phone'] = phone
     context.user_data['state'] = BotState.REGISTRATION_NAME
-    
+
     await update.message.reply_text(
         "✅ <b>Отлично! Номер телефона принят.</b>\n\n"
         "👤 <b>Теперь введи свое ИМЯ:</b>",
@@ -305,7 +305,7 @@ async def handle_registration_phone(update: Update, context: CallbackContext) ->
 async def handle_registration_name(update: Update, context: CallbackContext) -> None:
     """Обработка ввода имени и завершение регистрации"""
     name = update.message.text.strip()
-    
+
     if len(name) < 2 or len(name) > 50:
         await update.message.reply_text(
             "❌ <b>Имя должно быть от 2 до 50 символов.</b>\n\n"
@@ -313,20 +313,20 @@ async def handle_registration_name(update: Update, context: CallbackContext) -> 
             parse_mode=HTML
         )
         return
-    
+
     user = update.effective_user
     registration_data = context.user_data.get('registration_data', {})
-    
+
     success = db.add_client(
         telegram_id=user.id,
         login=registration_data.get('login'),
         phone=registration_data.get('phone'),
         name=name
     )
-    
+
     if success:
         await notify_admins_about_registration(context.bot, user, registration_data, name)
-        
+
         welcome_text = f"""🎉 <b>Регистрация завершена!</b>
 
 ✨ Добро пожаловать, <b>{name}</b>!
@@ -337,13 +337,13 @@ async def handle_registration_name(update: Update, context: CallbackContext) -> 
 📞 <b>Телефон:</b> <code>{registration_data.get('phone')}</code>
 
 🚀 <b>Выберите действие:</b>"""
-        
+
         await update.message.reply_text(
             welcome_text,
             reply_markup=create_user_keyboard(),
             parse_mode=HTML
         )
-        
+
         context.user_data['state'] = BotState.MAIN_MENU
         context.user_data.pop('registration_data', None)
     else:
@@ -377,14 +377,14 @@ async def write_to_admin(update: Update, context: CallbackContext) -> None:
     """Клиент пишет сообщение администратору"""
     user = update.effective_user
     client = db.get_client_by_telegram_id(user.id)
-    
+
     if not client:
         await update.message.reply_text("❌ <b>Вы не зарегистрированы</b>", parse_mode=HTML)
         return
-    
+
     context.user_data['state'] = BotState.WRITING_TO_ADMIN
     context.user_data['client_writing'] = True
-    
+
     await update.message.reply_sticker('CAACAgIAAxkBAAI1jGohma-WwrzzcMUL2eo3uKKtfP5NAAIDEAACFIrJSQy6GxfYgpcDOwQ')
     message = "💬 <b>Написать администратору</b>\n\n"
     message += "<b>Введите ваше сообщение:</b>\n"
@@ -392,7 +392,7 @@ async def write_to_admin(update: Update, context: CallbackContext) -> None:
     message += "• Фото с подписью\n"
     message += "• Голосовое сообщение</i>\n\n"
     message += "<i>Администратор ответит вам в ближайшее время</i>"
-    
+
     await update.message.reply_text(
         message,
         reply_markup=create_cancel_keyboard(),
@@ -403,12 +403,12 @@ async def handle_client_message(update: Update, context: CallbackContext) -> Non
     """Обрабатывает сообщение от клиента и пересылает админу"""
     if not context.user_data.get('client_writing'):
         return
-    
+
     user = update.effective_user
     client = db.get_client_by_telegram_id(user.id)
-    
+
     message_text = update.message.text
-    
+
     # Отмена
     if message_text and message_text == "❌ Отменить":
         context.user_data.pop('client_writing', None)
@@ -419,16 +419,16 @@ async def handle_client_message(update: Update, context: CallbackContext) -> Non
             parse_mode=HTML
         )
         return
-    
+
     context.user_data.pop('client_writing', None)
     context.user_data['state'] = BotState.MAIN_MENU
-    
+
     # Формируем сообщение админу
     from datetime import datetime
     now = datetime.now()
     months = ['Января', 'Февраля', 'Марта', 'Апреля', 'Мая', 'Июня',
              'Июля', 'Августа', 'Сентября', 'Октября', 'Ноября', 'Декабря']
-    
+
     admin_msg = f"💌 <b>СООБЩЕНИЕ ОТ КЛИЕНТА</b>\n\n"
     admin_msg += f"👤 <b>Имя:</b> {client['name']}\n"
     admin_msg += f"📝 <b>Логин:</b> <code>{client['login']}</code>\n"
@@ -437,7 +437,7 @@ async def handle_client_message(update: Update, context: CallbackContext) -> Non
     admin_msg += f"📅 <b>Дата:</b> {now.day} {months[now.month-1]} {now.year}\n"
     admin_msg += f"🕐 <b>Время:</b> {now.strftime('%H:%M')}\n"
     admin_msg += f"━━━━━━━━━━━━━━━━━━━━\n\n"
-    
+
     if update.message.photo:
         # Фото
         caption = update.message.caption or ""
@@ -461,7 +461,7 @@ async def handle_client_message(update: Update, context: CallbackContext) -> Non
             try:
                 await context.bot.send_message(admin_id, admin_msg, parse_mode=HTML)
             except: pass
-    
+
     # Отвечаем клиенту
     await update.message.reply_text(
         "✅ <b>Сообщение отправлено!</b>\n\n"
@@ -475,10 +475,10 @@ async def groups_menu(update: Update, context: CallbackContext) -> None:
     """Меню групп клиентов"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     groups = db.get_groups()
     context.user_data['state'] = BotState.GROUPS_MENU
-    
+
     message = "👥 <b>ГРУППЫ КЛИЕНТОВ</b>\n\nВыберите группу:"
     await update.message.reply_text(
         message,
@@ -491,19 +491,19 @@ async def send_group_message(update: Update, context: CallbackContext) -> None:
     """Отправляет сообщение всем клиентам в группе"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     group = context.user_data.get('selected_group')
     if not group:
         await update.message.reply_text("❌ Группа не выбрана", parse_mode=HTML)
         return
-    
+
     context.user_data['state'] = BotState.GROUP_MESSAGE
     context.user_data['sending_to_group'] = True
-    
+
     message = f"💌 <b>Рассылка группе:</b> {group['name']}\n\n"
     message += "<b>Введите сообщение:</b>\n"
     message += "<i>Оно будет отправлено всем клиентам в этой группе</i>"
-    
+
     await update.message.reply_text(
         message,
         reply_markup=create_cancel_keyboard(),
@@ -514,30 +514,30 @@ async def handle_group_message(update: Update, context: CallbackContext) -> None
     """Обрабатывает сообщение для группы"""
     if not context.user_data.get('sending_to_group'):
         return
-    
+
     message_text = update.message.text
-    
+
     if message_text == "❌ Отменить":
         context.user_data.pop('sending_to_group', None)
         context.user_data['state'] = BotState.GROUP_DETAIL_MENU
         await update.message.reply_text("❌ Отменено", parse_mode=HTML)
         return
-    
+
     group = context.user_data.get('selected_group')
     if not group:
         return
-    
+
     context.user_data.pop('sending_to_group', None)
     context.user_data['state'] = BotState.GROUP_DETAIL_MENU
-    
+
     clients = db.get_clients_in_group(group['id'])
-    
+
     if not clients:
         await update.message.reply_text("❌ В группе нет клиентов", parse_mode=HTML)
         return
-    
+
     await update.message.reply_text(f"🔄 Отправляю {len(clients)} клиентам...", parse_mode=HTML)
-    
+
     sent = 0
     for client in clients:
         try:
@@ -549,7 +549,7 @@ async def handle_group_message(update: Update, context: CallbackContext) -> None
             sent += 1
         except:
             pass
-    
+
     await update.message.reply_text(
         f"✅ <b>Рассылка завершена!</b>\n\n"
         f"<b>Группа:</b> {group['name']}\n"
@@ -562,34 +562,34 @@ async def group_detail(update: Update, context: CallbackContext) -> None:
     """Детали группы"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     message_text = update.message.text
-    
+
     if "⬅️" in message_text:
         context.user_data['state'] = BotState.MAIN_MENU
         await update.message.reply_text("🏠 Главное меню", reply_markup=create_admin_keyboard())
         return
-    
+
     # Извлекаем название группы
     group_name = message_text.split(' (')[0].strip().replace('📁 ', '')
-    
+
     groups = db.get_groups()
     group = next((g for g in groups if g['name'] == group_name), None)
-    
+
     if group:
         context.user_data['selected_group'] = group
         context.user_data['state'] = BotState.GROUP_DETAIL_MENU
-        
+
         clients = db.get_clients_in_group(group['id'])
-        
+
         message = f"<b>{group['name']}</b>\n\n"
         message += f"👥 Клиентов: {len(clients)}\n\n"
-        
+
         if clients:
             message += "<b>Список:</b>\n"
             for c in clients:
                 message += f"  • {c['name']} — <code>{c['login']}</code>\n"
-        
+
         await update.message.reply_text(
             message,
             reply_markup=create_group_actions_keyboard(),
@@ -602,25 +602,25 @@ async def add_client_to_group_handler(update: Update, context: CallbackContext) 
     """Добавляет клиента в группу"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     group = context.user_data.get('selected_group')
     if not group:
         return
-    
+
     users = db.get_all_clients()
     context.user_data['state'] = BotState.ADD_TO_GROUP
     context.user_data['users_for_group'] = users
-    
+
     message = f"📁 <b>{group['name']}</b> — добавление клиента\n\n"
     message += "<b>Введите логин клиента:</b>\n"
     message += "<i>Или выберите из списка ниже:</i>"
-    
+
     # Клавиатура с пользователями
     keyboard = []
     for u in users[:20]:
         keyboard.append([f"👤 {u['name']} ({u['login']})"])
     keyboard.append(["⬅️ Отмена"])
-    
+
     await update.message.reply_text(
         message,
         reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True),
@@ -631,20 +631,20 @@ async def handle_add_to_group(update: Update, context: CallbackContext) -> None:
     """Обрабатывает добавление клиента в группу"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     message_text = update.message.text
     group = context.user_data.get('selected_group')
-    
+
     if not group or "⬅️" in message_text:
         context.user_data['state'] = BotState.GROUP_DETAIL_MENU
         await group_detail(update, context)
         return
-    
+
     # Извлекаем логин
     import re
     match = re.search(r'\(([^)]+)\)', message_text)
     login = match.group(1) if match else message_text.strip()
-    
+
     client = db.get_client_by_login(login)
     if client:
         db.add_client_to_group(client['id'], group['id'])
@@ -654,7 +654,7 @@ async def handle_add_to_group(update: Update, context: CallbackContext) -> None:
         )
     else:
         await update.message.reply_text("❌ Клиент не найден", parse_mode=HTML)
-    
+
     context.user_data['state'] = BotState.GROUP_DETAIL_MENU
     await update.message.reply_text(
         "Выберите действие:",
@@ -664,32 +664,32 @@ async def handle_add_to_group(update: Update, context: CallbackContext) -> None:
 
 
     await update.message.reply_text("🔌 <b>Получаю информацию о прокси...</b>", parse_mode=HTML)
-    
+
     def get_data():
         from proxy_manager import get_proxy_status
         return get_proxy_status()
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_data)
         data = future.result()
-    
+
     if data['status'] == 'error':
         await update.message.reply_text(f"❌ <b>Ошибка:</b> {data.get('error', '?')}", parse_mode=HTML)
         return
-    
+
     status_emoji = '🟢' if data['status'] == 'active' else '🔴'
     status_text = 'Работает' if data['status'] == 'active' else 'Остановлен'
-    
+
     message = "🔌 <b>SOCKS5 ПРОКСИ</b>\n\n"
     message += f"{status_emoji} <b>Статус:</b> {status_text}\n"
     message += f"🔗 <b>Порт:</b> {data['port']}\n"
     message += f"👥 <b>Активных подключений:</b> {data['connections']}\n\n"
-    
+
     # Конфиг
     message += "<b>📋 Конфигурация:</b>\n"
     for line in data['config'][:5]:
         message += f"  • <code>{line[:60]}</code>\n"
-    
+
     keyboard = [
         [InlineKeyboardButton("👥 Пользователи", callback_data="proxy_users"),
          InlineKeyboardButton("➕ Добавить", callback_data="proxy_add")],
@@ -697,7 +697,7 @@ async def handle_add_to_group(update: Update, context: CallbackContext) -> None:
          InlineKeyboardButton("🔄 Перезагрузить", callback_data="proxy_restart")],
         [InlineKeyboardButton("📋 Логи", callback_data="proxy_logs")],
     ]
-    
+
     await update.message.reply_text(
         message,
         reply_markup=InlineKeyboardMarkup(keyboard),
@@ -710,7 +710,7 @@ async def handle_add_to_group(update: Update, context: CallbackContext) -> None:
             await query.edit_message_text("✅ <b>Прокси перезагружен!</b>", parse_mode=HTML)
         else:
             await query.edit_message_text("❌ <b>Ошибка перезагрузки</b>", parse_mode=HTML)
-    
+
     elif query.data == "proxy_stats":
         from proxy_manager import get_proxy_status
         import subprocess
@@ -718,7 +718,7 @@ async def handle_add_to_group(update: Update, context: CallbackContext) -> None:
         # Кто подключён — IP и логины из логов
         result = subprocess.run(['ss', '-tn'], capture_output=True, text=True, timeout=5)
         connections = [l.split() for l in result.stdout.split('\n') if ':54985' in l]
-        
+
         # Получаем логины из journalctl
         log_result = subprocess.run(['journalctl', '-u', 'danted', '--no-pager', '-n', '50'],
                                     capture_output=True, text=True, timeout=5)
@@ -734,17 +734,17 @@ async def handle_add_to_group(update: Update, context: CallbackContext) -> None:
                     if len(parts) == 5:  # IP с портом
                         ip = '.'.join(parts[:4])
                 user_map[ip] = match.group(1)
-        
+
         conn_info = ""
         for c in connections[:10]:
             ip = c[4].split('.')[0] if len(c) > 4 else '?'
             full_ip = c[4] if len(c) > 4 else '?'
             user = user_map.get(full_ip.split(':')[0] if ':' in full_ip else full_ip, '?')
             conn_info += f"  • {user} @ {full_ip}\n" if user != '?' else f"  • {full_ip}\n"
-        
+
         if not conn_info:
             conn_info = "  Нет подключений"
-        
+
         keyboard = [[InlineKeyboardButton("⬅️ Назад", callback_data="proxy_back")]]
         await query.edit_message_text(
             f"📊 <b>Статистика прокси</b>\n\n"
@@ -791,13 +791,13 @@ async def switch_to_client_mode(update: Update, context: CallbackContext) -> Non
     """Переключает администратора в режим клиента"""
     user_id = update.effective_user.id
     user = update.effective_user
-    
+
     if not is_admin(user_id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой функции</b>", parse_mode=HTML)
         return
-    
+
     client = db.get_client_by_telegram_id(user_id)
-    
+
     if not client:
         await update.message.reply_text(
             "⚠️ <b>Вы не зарегистрированы как клиент.</b>\n\n"
@@ -811,7 +811,7 @@ async def switch_to_client_mode(update: Update, context: CallbackContext) -> Non
 
     context.user_data['is_admin_in_client_mode'] = True
     context.user_data['state'] = BotState.MAIN_MENU
-    
+
     await update.message.reply_text(
         f"👤 <b>Режим клиента активирован</b>\n\n"
         f"📝 <b>Логин:</b> <code>{client['login']}</code>\n"
@@ -827,11 +827,11 @@ async def panel_switch(update: Update, context: CallbackContext) -> None:
     """Inline-меню выбора панели"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     from panel_manager import _active_panel_id, get_panels_list
     panels = get_panels_list()
     active = next((p for p in panels if p['id'] == _active_panel_id), panels[0])
-    
+
     keyboard = []
     for panel in panels:
         emoji = "✅ " if panel['id'] == _active_panel_id else ""
@@ -839,11 +839,11 @@ async def panel_switch(update: Update, context: CallbackContext) -> None:
             f"{emoji}{panel['emoji']} {panel['name']}",
             callback_data=f"panel_switch_{panel['id']}"
         )])
-    
+
     message = f"🔄 <b>Выбор панели</b>\n\n"
     message += f"Активная: {active['emoji']} <b>{active['name']}</b>\n"
     message += f"🔗 <code>{active['url'][:60]}...</code>"
-    
+
     await update.message.reply_text(
         message,
         reply_markup=InlineKeyboardMarkup(keyboard),
@@ -854,13 +854,13 @@ async def handle_panel_switch(update: Update, context: CallbackContext) -> None:
     """Обрабатывает переключение панели"""
     query = update.callback_query
     panel_id = int(query.data.replace("panel_switch_", ""))
-    
+
     from panel_manager import set_active_panel, get_panels_list
     set_active_panel(panel_id)
-    
+
     panels = get_panels_list()
     panel = next((p for p in panels if p['id'] == panel_id), None)
-    
+
     if panel:
         await query.answer(f"✅ {panel['emoji']} {panel['name']}")
         await query.edit_message_text(
@@ -873,9 +873,9 @@ async def panel_switch_old(update: Update, context: CallbackContext) -> None:
     """Обрабатывает выбор панели"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     message_text = update.message.text
-    
+
     if "⬅️ Назад" in message_text or message_text == "⬅️ Назад в меню":
         context.user_data['state'] = BotState.MAIN_MENU
         await update.message.reply_text(
@@ -884,9 +884,9 @@ async def panel_switch_old(update: Update, context: CallbackContext) -> None:
             parse_mode=HTML
         )
         return
-    
+
     from panel_manager import get_panels_list, set_active_panel
-    
+
     panels = get_panels_list()
     for panel in panels:
         if panel['name'] in message_text:
@@ -899,7 +899,7 @@ async def panel_switch_old(update: Update, context: CallbackContext) -> None:
             )
             context.user_data['state'] = BotState.MAIN_MENU
             return
-    
+
     await update.message.reply_text("❌ <b>Панель не найдена</b>", parse_mode=HTML)
 
 
@@ -910,7 +910,7 @@ async def server_speed_test(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         return
     await update.message.reply_text("🚀 <b>Запускаю Speedtest...</b>\n⏳ Подождите ~30 секунд", parse_mode='HTML')
-    
+
     import subprocess
     try:
         result = subprocess.run(
@@ -918,16 +918,16 @@ async def server_speed_test(update: Update, context: CallbackContext) -> None:
             shell=True, capture_output=True, text=True, timeout=60
         )
         output = result.stdout
-        
+
         if output:
             ping_match = re.search(r'Ping:\s+([\d.]+)', output)
             dl_match = re.search(r'Download:\s+([\d.]+)', output)
             ul_match = re.search(r'Upload:\s+([\d.]+)', output)
-            
+
             ping = ping_match.group(1) if ping_match else "?"
             dl_speed = dl_match.group(1) if dl_match else "?"
             ul_speed = ul_match.group(1) if ul_match else "?"
-            
+
             # Информация о провайдере
             isp = ""
             server = ""
@@ -943,7 +943,7 @@ async def server_speed_test(update: Update, context: CallbackContext) -> None:
                         isp = line.split('(')[1].split(')')[0] if '(' in line else line.strip()
             except:
                 pass
-            
+
             msg = f"🚀 <b>SPEEDTEST СЕРВЕРА</b>\n\n"
             msg += f"📡 Пинг: <b>{ping} ms</b>\n"
             msg += f"📥 Загрузка: <b>{dl_speed} Mbps</b>\n"
@@ -953,7 +953,7 @@ async def server_speed_test(update: Update, context: CallbackContext) -> None:
             if server:
                 msg += f"📍 Сервер: <b>{server}</b>\n"
             msg += "\n"
-            
+
             try:
                 dl_val = float(dl_speed) if dl_speed != "?" else 0
                 ul_val = float(ul_speed) if ul_speed != "?" else 0
@@ -971,16 +971,16 @@ async def server_speed_test(update: Update, context: CallbackContext) -> None:
             msg = "❌ Не удалось измерить скорость"
     except Exception as e:
         msg = f"❌ Ошибка: {e}"
-    
+
     await update.message.reply_text(msg, parse_mode='HTML')
 async def settings_menu(update: Update, context: CallbackContext) -> None:
     """Меню настроек бота"""
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>Нет доступа</b>", parse_mode=HTML)
         return
-    
+
     context.user_data['state'] = BotState.SETTINGS_MENU
-    
+
     message = "⚙️ <b>НАСТРОЙКИ БОТА</b>\n\nВыберите действие:"
     await update.message.reply_text(
         message,
@@ -992,69 +992,69 @@ async def bot_status(update: Update, context: CallbackContext) -> None:
     """Показывает состояние бота"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     import psutil, os, time as time_mod
     from datetime import datetime
-    
+
     process = psutil.Process(os.getpid())
     mem = process.memory_info().rss
     threads = process.num_threads()
     cpu = process.cpu_percent(interval=0.5)
-    
+
     # Uptime бота
     now = datetime.now()
     start_time = datetime.fromtimestamp(process.create_time())
     uptime = now - start_time
     uptime_str = f"{uptime.days}д {uptime.seconds//3600}ч {(uptime.seconds%3600)//60}м"
-    
+
     # Кэш
     try:
         from xui_api import get_traffic_cache_stats
         cache = get_traffic_cache_stats()
     except:
         cache = {}
-    
+
     # База
     from database import db
     users_count = len(db.get_all_clients())
-    
+
     # Уведомления
     try:
         from connection_notifier import get_notifications_status
         notif = "🟢 ВКЛ" if get_notifications_status() else "🔴 ВЫКЛ"
     except:
         notif = "❓"
-    
+
     # Панель
     from panel_manager import get_active_panel
     panel = get_active_panel()
-    
+
     message = "🤖 <b>СОСТОЯНИЕ БОТА</b>\n\n"
     message += f"⏰ <b>Аптайм:</b> {uptime_str}\n"
     message += f"⚡ <b>CPU:</b> {cpu:.1f}%\n"
     message += f"🧠 <b>Память:</b> {mem // 1024 // 1024} MB\n"
     message += f"🧵 <b>Потоков:</b> {threads}\n\n"
-    
+
     if cache and 'error' not in cache:
         message += f"📊 <b>LRU-Кэш:</b>\n"
         message += f"  Размер: {cache.get('size', 0)}/{cache.get('max_size', 0)}\n"
         message += f"  Hit rate: {cache.get('stats', {}).get('hit_rate', 0):.1f}%\n"
         message += f"  Очисток: {cache.get('stats', {}).get('evictions', 0)}\n\n"
-    
+
     message += f"👥 <b>В базе:</b> {users_count} пользователей\n"
     message += f"🔔 <b>Уведомления:</b> {notif}\n"
     message += f"🔄 <b>Панель:</b> {panel['emoji']} {panel['name']}\n"
     message += f"🔗 <b>URL:</b> <code>{panel['url'][:50]}...</code>\n\n"
-    
+
     message += "✅ <b>Бот работает стабильно</b>"
-    
+
     await update.message.reply_text(message, parse_mode=HTML)
 
 async def restart_bot(update: Update, context: CallbackContext) -> None:
     """Перезагружает бота"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     await update.message.reply_text("🔄 <b>Перезагружаю бота...</b>", parse_mode=HTML)
     import os, sys
     subprocess.run(["systemctl", "restart", "SLV-bot.service"], timeout=10)
@@ -1069,20 +1069,20 @@ async def check_errors(update: Update, context: CallbackContext) -> None:
     """Проверяет бота на ошибки"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     import subprocess
     result = subprocess.run(
         ['journalctl', '-u', 'SLV-bot.service', '--no-pager', '-n', '20', '-p', '3'],
         capture_output=True, text=True, timeout=5
     )
-    
+
     errors = result.stdout.strip()
-    
+
     if errors:
         message = f"📋 <b>ПОСЛЕДНИЕ ОШИБКИ:</b>\n\n<code>{errors[:1000]}</code>"
     else:
         message = "✅ <b>Ошибок не найдено!</b>\n\nБот работает стабильно."
-    
+
     await update.message.reply_text(message, parse_mode=HTML)
 
 
@@ -1090,23 +1090,23 @@ async def auto_reset_status(update: Update, context: CallbackContext) -> None:
     """Показывает статус автосброса"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     from auto_reset import auto_reset
     from datetime import datetime
-    
+
     now = datetime.now()
-    
+
     # Вычисляем следующее 1 число
     if now.month == 12:
         next_reset = now.replace(year=now.year+1, month=1, day=1, hour=0, minute=1, second=0)
     else:
         next_reset = now.replace(month=now.month+1, day=1, hour=0, minute=1, second=0)
-    
+
     days_left = (next_reset - now).days
-    
+
     months = ['Января', 'Февраля', 'Марта', 'Апреля', 'Мая', 'Июня',
              'Июля', 'Августа', 'Сентября', 'Октября', 'Ноября', 'Декабря']
-    
+
     message = "🔄 <b>АВТОСБРОС ТРАФИКА</b>\n\n"
     message += f"📅 <b>Следующий сброс:</b> {next_reset.day} {months[next_reset.month-1]} {next_reset.year}\n"
     message += f"🕐 <b>Время:</b> 00:01\n"
@@ -1116,7 +1116,7 @@ async def auto_reset_status(update: Update, context: CallbackContext) -> None:
     message += "• На ВСЕХ панелях\n"
     message += "• Админ получает отчёт\n\n"
     message += "<i>Сброс происходит автоматически</i>"
-    
+
     await update.message.reply_text(message, parse_mode=HTML)
 
 
@@ -1124,9 +1124,9 @@ async def create_backup(update: Update, context: CallbackContext) -> None:
     """Создаёт полный бэкап бота"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     await update.message.reply_text("💾 <b>Создаю бэкап...</b>", parse_mode=HTML)
-    
+
     def do_backup():
         import subprocess, time
         name = f"SLV_bot_FINAL_{time.strftime("%Y%m%d_%H%M%S")}.tar.gz"
@@ -1139,11 +1139,11 @@ async def create_backup(update: Update, context: CallbackContext) -> None:
             size = subprocess.run(['du', '-sh', path], capture_output=True, text=True).stdout.split()[0]
             return name, size
         return None, None
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(do_backup)
         name, size = future.result()
-    
+
     if name:
         await update.message.reply_text(
             f"💾 <b>БЭКАП СОЗДАН!</b>\n\n"
@@ -1162,9 +1162,9 @@ async def show_changelog(update: Update, context: CallbackContext) -> None:
     """Показывает что нового в обновлениях"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     await update.message.reply_text("🔄 <b>Получаю информацию...</b>", parse_mode=HTML)
-    
+
     def get_changelog():
         import requests as req, re
         try:
@@ -1172,19 +1172,19 @@ async def show_changelog(update: Update, context: CallbackContext) -> None:
             info = get_panel_update_info()
             current = info.get('currentVersion', '3.0.2')
             latest = info.get('latestVersion', 'v3.2.0')
-            
+
             r = req.get("https://api.github.com/repos/MHSanaei/3x-ui/releases?per_page=5", timeout=10)
             if r.status_code != 200:
                 return None
-            
+
             releases = r.json()
             changelogs = []
-            
+
             for rel in releases:
                 tag = rel.get('tag_name', '')
                 date = rel.get('published_at', '')[:10]
                 body = rel.get('body', '')
-                
+
                 changes = []
                 for line in body.split('\n'):
                     line = line.strip()
@@ -1202,39 +1202,39 @@ async def show_changelog(update: Update, context: CallbackContext) -> None:
                         text = text.strip()
                         if len(text) > 10:
                             changes.append(text)
-                
+
                 if changes:
                     changelogs.append({
                         'version': tag,
                         'date': date,
                         'changes': changes[:5]
                     })
-            
+
             return changelogs, current, latest
         except:
             return None
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_changelog)
         result = future.result()
-    
+
     if result:
         changelogs, current, latest = result
-        
+
         message = "🆕 <b>ОБНОВЛЕНИЯ ПАНЕЛИ 3X-UI</b>\n\n"
         message += f"📦 <b>У вас:</b> {current}\n"
         message += f"🆕 <b>Доступна:</b> {latest}\n\n"
-        
+
         for cl in changelogs[:1]:  # только последние 2 версии
             message += f"📋 <b>{cl['version']}</b> ({cl['date']})\n"
             for change in cl['changes']:
                 message += f"  • {change}\n"
             message += "\n"
-        
+
         message += "<i>Данные с GitHub</i>"
     else:
         message = "❌ <b>Не удалось получить информацию</b>"
-    
+
     await update.message.reply_text(message, parse_mode=HTML)
 
 # ==================== МОНИТОРИНГ СЕРВЕРОВ ====================
@@ -1251,13 +1251,13 @@ def save_servers(servers):
         for ip in servers:
             f.write(ip + '\n')
 
-def ping_server(ip, port=22):
+def ping_server(ip, port=443):
     """Проверяет доступность сервера через TCP (fallback на ICMP)"""
     import subprocess, socket
     # Сначала пробуем TCP
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(2)
+        sock.settimeout(0.5)
         start = __import__('time').time()
         result = sock.connect_ex((ip, port))
         elapsed = (__import__('time').time() - start) * 1000
@@ -1282,12 +1282,12 @@ async def monitor_callback(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     await query.answer()
     data = query.data
-    
+
     if data == "mon_add":
         context.user_data['waiting_for_server'] = True
         await query.edit_message_text("➕ <b>Введите IP сервера:</b>", parse_mode='HTML')
         return
-    
+
     elif data == "mon_del":
         servers = load_servers()
         if not servers:
@@ -1297,7 +1297,7 @@ async def monitor_callback(update: Update, context: CallbackContext) -> None:
         keyboard.append([InlineKeyboardButton("⬅️ Назад", callback_data="mon_refresh")])
         await query.edit_message_text("🗑️ <b>Выберите сервер для удаления:</b>", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='HTML')
         return
-    
+
     elif data.startswith("mon_del_"):
         ip = data.replace("mon_del_", "")
         servers = load_servers()
@@ -1307,12 +1307,12 @@ async def monitor_callback(update: Update, context: CallbackContext) -> None:
         await query.answer(f"✅ {ip} удалён")
         await server_monitor(update, context, query)
         return
-    
+
     elif data == "mon_refresh":
         await query.answer("🔄 Обновляю...")
         await server_monitor(update, context, query)
         return
-    
+
     elif data == "mon_back":
         await query.edit_message_text("⚙️ <b>Настройки</b>", parse_mode='HTML')
         return
@@ -1322,10 +1322,10 @@ async def server_monitor(update: Update, context: CallbackContext, query=None) -
     """Показывает список серверов с кнопками"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     servers = load_servers()
     message = "🖥️ <b>МОНИТОРИНГ СЕРВЕРОВ</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-    
+
     if servers:
         for ip in servers:
             status = ping_server(ip)
@@ -1335,14 +1335,14 @@ async def server_monitor(update: Update, context: CallbackContext, query=None) -
                 message += f"🔴 <code>{ip}</code> — не отвечает\n"
     else:
         message += "📋 Список серверов пуст\n"
-    
+
     keyboard = [
         [InlineKeyboardButton("➕ Добавить сервер", callback_data="mon_add")],
         [InlineKeyboardButton("🗑️ Удалить сервер", callback_data="mon_del")],
         [InlineKeyboardButton("🔄 Обновить", callback_data="mon_refresh")],
         [InlineKeyboardButton("⬅️ Назад", callback_data="mon_back")],
     ]
-    
+
     if query is not None:
         await query.edit_message_text(message, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='HTML')
     else:
@@ -1434,12 +1434,12 @@ async def check_bot_update_manual(update: Update, context: CallbackContext) -> N
             latest = release.get('tag_name', '')
             body = release.get('body', '')[:800]
             date = release.get('published_at', '')[:10]
-            
+
             msg = f"🆕 <b>ОБНОВЛЕНИЯ БОТА SLK</b>\n\n"
             msg += f"📦 У вас: {BOT_VERSION}\n"
             msg += f"🆕 Доступна: {latest}\n\n"
             msg += f"📋 <b>{latest}</b> ({date})\n"
-            
+
             for line in body.split('\n'):
                 line = line.strip()
                 if line and not line.startswith('#'):
@@ -1449,12 +1449,12 @@ async def check_bot_update_manual(update: Update, context: CallbackContext) -> N
                         msg += f"\n{line}\n"
                     elif len(line) > 5:
                         msg += f"  • {line}\n"
-            
+
             msg += f"\n<i>Данные с GitHub</i>"
-            
+
             if latest != BOT_VERSION:
                 msg += f"\n\n🔄 Для обновления:\n<code>slk-menu</code> → Обновить"
-            
+
             await update.message.reply_text(msg, parse_mode='HTML')
         else:
             await update.message.reply_text("❌  Не удалось проверить обновления", parse_mode='HTML')
@@ -1465,11 +1465,11 @@ async def show_cache(update: Update, context: CallbackContext) -> None:
     """Показывает статистику кэша"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     try:
         from xui_api import get_traffic_cache_stats
         stats = get_traffic_cache_stats()
-        
+
         if stats and 'error' not in stats:
             message = "📊 <b>СТАТИСТИКА LRU-КЭША</b>\n\n"
             message += f"📦 <b>Размер:</b> {stats['size']}/{stats['max_size']} ({stats['usage_percent']:.1f}%)\n"
@@ -1482,7 +1482,7 @@ async def show_cache(update: Update, context: CallbackContext) -> None:
             message = "❌ Статистика недоступна"
     except:
         message = "❌ Ошибка получения статистики"
-    
+
     await update.message.reply_text(message, parse_mode=HTML)
 
 async def toggle_notifications_handler(update: Update, context: CallbackContext) -> None:
@@ -1490,11 +1490,11 @@ async def toggle_notifications_handler(update: Update, context: CallbackContext)
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа</b>", parse_mode=HTML)
         return
-    
+
     from connection_notifier import toggle_notifications, get_notifications_status
-    
+
     status = toggle_notifications()
-    
+
     if status:
         await update.message.reply_text(
             "🔔 <b>Уведомления ВКЛЮЧЕНЫ</b>\n\n"
@@ -1509,20 +1509,20 @@ async def toggle_notifications_handler(update: Update, context: CallbackContext)
             reply_markup=create_admin_keyboard(),
             parse_mode=HTML
         )
-    
+
     context.user_data['state'] = BotState.MAIN_MENU
 
 async def switch_to_admin_mode(update: Update, context: CallbackContext) -> None:
     """Возвращает администратора из клиентского режима в админ-панель"""
     user_id = update.effective_user.id
-    
+
     if not is_admin(user_id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой функции</b>", parse_mode=HTML)
         return
-    
+
     context.user_data.pop('is_admin_in_client_mode', None)
     context.user_data['state'] = BotState.MAIN_MENU
-    
+
     await update.message.reply_text(
         "⚙️ <b>Панель администратора</b>\n\n"
         "<i>Выберите действие:</i>",
@@ -1542,20 +1542,20 @@ async def status(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     await update.message.reply_text("🔍 <b>Проверяю подключение к панели 3x-ui...</b>", parse_mode=HTML)
-    
+
     def check_connection():
         try:
             inbounds = get_inbounds_list()
             return len(inbounds) > 0
         except:
             return False
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(check_connection)
         is_connected = future.result()
-    
+
     if is_connected:
         await update.message.reply_text("✅ <b>Успешно подключено к панели 3x-ui</b>", parse_mode=HTML)
     else:
@@ -1571,16 +1571,16 @@ async def server_status(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     await update.message.reply_text("🔄 <b>Получаю информацию о сервере...</b>", parse_mode=HTML)
-    
+
     def get_server_data():
         return get_server_status()
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_server_data)
         server_info = future.result()
-    
+
     if server_info:
         keyboard = [[InlineKeyboardButton("🔄 Обновить", callback_data="server_refresh")]]
         await update.message.reply_text(server_info, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=HTML)
@@ -1592,20 +1592,20 @@ async def routing_view(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ Нет доступа", parse_mode=HTML)
         return
-    
+
     await update.message.reply_text("🔄 <b>Получаю правила маршрутизации...</b>", parse_mode=HTML)
-    
+
     def get_rules():
         from routing_view import get_routing_rules, format_rules
         rules, error = get_routing_rules()
         if error:
             return f"❌ <b>Ошибка:</b> {error}"
         return format_rules(rules)
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_rules)
         result = future.result()
-    
+
     # Inline-кнопки управления
     keyboard = [
         [InlineKeyboardButton("➕ Добавить правило", callback_data="routing_add"),
@@ -1613,7 +1613,7 @@ async def routing_view(update: Update, context: CallbackContext) -> None:
         [InlineKeyboardButton("🔄 Обновить", callback_data="routing_refresh"),
          InlineKeyboardButton("⬅️ Закрыть", callback_data="routing_close")]
     ]
-    
+
     await update.message.reply_text(
         result,
         reply_markup=InlineKeyboardMarkup(keyboard),
@@ -1624,27 +1624,27 @@ async def handle_routing_callback(update: Update, context: CallbackContext) -> N
     """Обрабатывает inline-кнопки маршрутов"""
     query = update.callback_query
     await query.answer()
-    
+
     data = query.data
-    
+
     if data == "routing_close":
         await query.edit_message_text("🛡️ Маршрутизация закрыта", parse_mode=HTML)
         return
-    
+
     if data == "routing_refresh":
         from routing_view import get_routing_rules, format_rules
         rules, error = get_routing_rules()
         if error:
             await query.answer("Ошибка получения правил", show_alert=True)
             return
-        
+
         keyboard = [
             [InlineKeyboardButton("➕ Добавить правило", callback_data="routing_add"),
              InlineKeyboardButton("🗑️ Удалить правило", callback_data="routing_del")],
             [InlineKeyboardButton("🔄 Обновить", callback_data="routing_refresh"),
              InlineKeyboardButton("⬅️ Закрыть", callback_data="routing_close")]
         ]
-        
+
         try:
             await query.edit_message_text(
                 format_rules(rules),
@@ -1654,7 +1654,7 @@ async def handle_routing_callback(update: Update, context: CallbackContext) -> N
         except:
             await query.answer("✅ Обновлено", show_alert=False)
         return
-    
+
     if data == "routing_add":
         await query.edit_message_text(
             "➕ <b>ДОБАВЛЕНИЕ ПРАВИЛА</b>\n\n"
@@ -1669,7 +1669,7 @@ async def handle_routing_callback(update: Update, context: CallbackContext) -> N
             parse_mode=HTML
         )
         return
-    
+
     if data == "routing_del":
         await query.edit_message_text(
             "🗑️ <b>УДАЛЕНИЕ ПРАВИЛА</b>\n\n"
@@ -1685,20 +1685,20 @@ async def handle_routing_callback(update: Update, context: CallbackContext) -> N
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ Нет доступа", parse_mode=HTML)
         return
-    
+
     await update.message.reply_text("🔄 <b>Получаю правила маршрутизации...</b>", parse_mode=HTML)
-    
+
     def get_rules():
         from routing_view import get_routing_rules, format_rules
         rules, error = get_routing_rules()
         if error:
             return f"❌ <b>Ошибка:</b> {error}"
         return format_rules(rules)
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_rules)
         result = future.result()
-    
+
     await update.message.reply_text(result, parse_mode=HTML)
 
 
@@ -1706,24 +1706,24 @@ async def add_route_command(update: Update, context: CallbackContext) -> None:
     """Добавляет правило маршрутизации: /addroute domain:site.com:block"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     args = context.args
     if not args:
         await update.message.reply_text("Использование: /addroute domain:site.com:block", parse_mode=HTML)
         return
-    
+
     await update.message.reply_text("🔧 Добавление правила через конфиг Xray...\n<i>В разработке</i>", parse_mode=HTML)
 
 async def del_route_command(update: Update, context: CallbackContext) -> None:
     """Удаляет правило: /delroute 3"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     args = context.args
     if not args:
         await update.message.reply_text("Использование: /delroute 3", parse_mode=HTML)
         return
-    
+
     await update.message.reply_text("🔧 Удаление правила...\n<i>В разработке</i>", parse_mode=HTML)
 
 async def inbounds(update: Update, context: CallbackContext) -> None:
@@ -1734,17 +1734,17 @@ async def inbounds(update: Update, context: CallbackContext) -> None:
 
         return
 
-    
+
 
     await update.message.reply_text("🔄 <b>Получаю список инбаундов...</b>", parse_mode=HTML)
 
-    
+
 
     def get_inbounds_data():
 
         return get_inbounds_list()
 
-    
+
 
     with ThreadPoolExecutor() as executor:
 
@@ -1752,7 +1752,7 @@ async def inbounds(update: Update, context: CallbackContext) -> None:
 
         inbounds_list = future.result()
 
-    
+
 
     if inbounds_list:
 
@@ -1762,11 +1762,11 @@ async def inbounds(update: Update, context: CallbackContext) -> None:
 
         keyboard = create_inbounds_keyboard(inbounds_list)
 
-        
+
 
         message = f"📡 <b>Инбаунды:</b> {len(inbounds_list)}\n\n"
 
-        
+
 
         for i, inbound in enumerate(inbounds_list, 1):
 
@@ -1786,7 +1786,7 @@ async def inbounds(update: Update, context: CallbackContext) -> None:
 
             total_down = inbound.get('down', 0)
 
-            
+
 
             message += f"{i}. {status} <b>{remark}</b>\n"
 
@@ -1794,11 +1794,11 @@ async def inbounds(update: Update, context: CallbackContext) -> None:
 
             message += f"   📊 ↑{format_traffic(total_up)} ↓{format_traffic(total_down)}\n\n"
 
-        
+
 
         message += "🔍 <b>Выберите инбаунд для просмотра клиентов:</b>"
 
-        
+
 
         await update.message.reply_text(message, reply_markup=keyboard, parse_mode=HTML)
 
@@ -1827,9 +1827,9 @@ async def inbound_detail(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     inbound_name = update.message.text
-    
+
     if inbound_name == "⬅️ Назад в меню":
         context.user_data['state'] = BotState.MAIN_MENU
         await update.message.reply_text(
@@ -1838,28 +1838,28 @@ async def inbound_detail(update: Update, context: CallbackContext) -> None:
             parse_mode=HTML
         )
         return
-    
+
     inbounds_list = context.user_data.get('inbounds_list', [])
     selected_inbound = None
-    
+
     for inbound in inbounds_list:
         remark = inbound.get('remark', '')
         if remark == inbound_name:
             selected_inbound = inbound
             break
-    
+
     if selected_inbound:
         clients_info = "❌  <b>Нет клиентов</b>"
         client_stats = selected_inbound.get('clientStats', [])
         if client_stats:
             active = sum(1 for c in client_stats if c.get('enable', True))
             clients_info = f"👥 <b>Клиентов:</b> {len(client_stats)} (🟢 {active} активных)\n"
-        
+
         security_info = ""
         protocol = selected_inbound.get('protocol', '').lower()
-        
+
         stream_settings = selected_inbound.get('streamSettings', {})
-        
+
         if isinstance(stream_settings, str):
             try:
                 if stream_settings.strip():
@@ -1868,45 +1868,45 @@ async def inbound_detail(update: Update, context: CallbackContext) -> None:
                     stream_settings = {}
             except json.JSONDecodeError:
                 stream_settings = {}
-        
+
         if isinstance(stream_settings, dict):
             security_settings = stream_settings.get('security', '')
             if security_settings:
                 security_info += f"  🔐 <b>Безопасность:</b> {security_settings.upper()}\n"
-            
+
             tls_settings = stream_settings.get('tlsSettings', {})
             if isinstance(tls_settings, dict):
                 server_name = tls_settings.get('serverName', '')
                 if server_name:
                     security_info += f"  🌐 <b>SNI:</b> {server_name}\n"
-                
+
                 alpn = tls_settings.get('alpn', [])
                 if alpn:
                     security_info += f"  🔄 <b>ALPN:</b> {', '.join(alpn)}\n"
-            
+
             network = stream_settings.get('network', 'tcp')
             security_info += f"  📡 <b>Сеть:</b> {network.upper()}\n"
-            
+
             if network == 'ws':
                 ws_settings = stream_settings.get('wsSettings', {})
                 if isinstance(ws_settings, dict):
                     path = ws_settings.get('path', '')
                     if path:
                         security_info += f"  🛣️ <b>Путь:</b> {path}\n"
-                    
+
                     headers = ws_settings.get('headers', {})
                     if isinstance(headers, dict):
                         host = headers.get('Host', '')
                         if host:
                             security_info += f"  🏠 <b>Host:</b> {host}\n"
-            
+
             elif network == 'grpc':
                 grpc_settings = stream_settings.get('grpcSettings', {})
                 if isinstance(grpc_settings, dict):
                     service_name = grpc_settings.get('serviceName', '')
                     if service_name:
                         security_info += f"  🔧 <b>Сервис:</b> {service_name}\n"
-        
+
         settings = selected_inbound.get('settings', {})
         if isinstance(settings, str):
             try:
@@ -1916,7 +1916,7 @@ async def inbound_detail(update: Update, context: CallbackContext) -> None:
                     settings = {}
             except json.JSONDecodeError:
                 settings = {}
-        
+
         if isinstance(settings, dict):
             clients_settings = settings.get('clients', [])
             if clients_settings:
@@ -1926,25 +1926,25 @@ async def inbound_detail(update: Update, context: CallbackContext) -> None:
                         if flow:
                             security_info += f"  🌊 <b>Flow:</b> {flow}\n"
                         break
-        
+
         if not security_info:
             security_info = "  🔐 <b>Безопасность:</b> Базовая\n"
             security_info += f"  📡 <b>Протокол:</b> {protocol.upper()}\n"
             security_info += f"  🔌 <b>Порт:</b> {selected_inbound.get('port', 'N/A')}\n"
-        
+
         message = f"📡 <b>Инбаунд:</b> {inbound_name}\n\n"
         message += f"🆔 <b>ID:</b> {selected_inbound.get('id', 'N/A')}\n"
         message += f"🔌 <b>Порт:</b> {selected_inbound.get('port', 'N/A')}\n"
         message += f"📊 <b>Протокол:</b> {selected_inbound.get('protocol', 'N/A')}\n"
         message += f"💾 <b>Трафик:</b> ↑{format_traffic(selected_inbound.get('up', 0))} ↓{format_traffic(selected_inbound.get('down', 0))}\n"
         message += f"🔒 <b>Включен:</b> {'✅' if selected_inbound.get('enable', False) else '❌'}\n\n"
-        
+
         message += "👥 <b>Клиенты:</b>\n"
         message += clients_info + "\n"
-        
+
         message += "🛡️ <b>Безопасность:</b>\n"
         message += security_info
-        
+
         await update.message.reply_text(message, parse_mode=HTML)
     else:
         await update.message.reply_text("❌ <b>Инбаунд не найден</b>", parse_mode=HTML)
@@ -1952,17 +1952,17 @@ async def all_clients(update: Update, context: CallbackContext) -> None:
     """Inline-меню выбора инбаунда"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     await update.message.reply_text("🔄 <b>Получаю список инбаундов...</b>", parse_mode=HTML)
-    
+
     def get_data():
         from xui_api import get_inbounds_list
         return get_inbounds_list()
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_data)
         inbounds = future.result()
-    
+
     if not inbounds:
         await update.message.reply_text("❌ <b>Нет инбаундов</b>", parse_mode=HTML)
         return
@@ -1989,9 +1989,9 @@ async def handle_inbound_select(update: Update, context: CallbackContext) -> Non
     """Показывает клиентов инбаунда inline-кнопками"""
     query = update.callback_query
     await query.answer("👥 Загружаю клиентов...")
-    
+
     inbound_id = int(query.data.replace("inbound_select_", ""))
-    
+
     def get_clients():
         from xui_api import get_inbounds_list
         inbounds = get_inbounds_list()
@@ -1999,18 +1999,18 @@ async def handle_inbound_select(update: Update, context: CallbackContext) -> Non
             if inbound['id'] == inbound_id:
                 return inbound
         return None
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_clients)
         inbound = future.result()
-    
+
     if not inbound:
         await query.edit_message_text("❌ Инбаунд не найден", parse_mode=HTML)
         return
-    
+
     clients = inbound.get('clientStats', [])
     remark = inbound.get('remark', '?').strip()
-    
+
     keyboard = []
     row = []
     for c in clients[:30]:
@@ -2024,13 +2024,13 @@ async def handle_inbound_select(update: Update, context: CallbackContext) -> Non
             row = []
     if row:
         keyboard.append(row)
-    
+
     keyboard.append([InlineKeyboardButton("⬅️ Назад", callback_data="back_to_inbounds")])
-    
+
     context.user_data['inbounds_list'] = [inbound]
     context.user_data['selected_inbound'] = inbound
     context.user_data['clients'] = clients
-    
+
     await query.edit_message_text(
         f"👥 <b>{remark}</b> — {len(clients)} клиентов\n\n<i>Выберите клиента:</i>",
         reply_markup=InlineKeyboardMarkup(keyboard),
@@ -2041,16 +2041,16 @@ async def handle_client_button(update: Update, context: CallbackContext) -> None
     """Показывает информацию о клиенте по inline-кнопке"""
     query = update.callback_query
     await query.answer("📊 Загружаю информацию...")
-    
+
     data = query.data
-    
+
     if data == "back_to_inbounds":
         await query.answer("⬅️ Возврат к инбаундам...")
         # Возврат к списку инбаундов
         def get_data():
             from xui_api import get_inbounds_list
             return get_inbounds_list()
-        
+
         with ThreadPoolExecutor() as executor:
             future = executor.submit(get_data)
             inbounds = future.result()
@@ -2068,16 +2068,16 @@ async def handle_client_button(update: Update, context: CallbackContext) -> None
                 row = []
         if row:
             keyboard.append(row)
-        
+
         await query.edit_message_text(
             "📡 <b>ВЫБОР ИНБАУНДА</b>",
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode=HTML
         )
         return
-    
+
     email = data.replace("client_btn_", "")
-    
+
     def get_client_info():
         from xui_api import get_inbounds_list
         inbounds = get_inbounds_list()
@@ -2086,11 +2086,11 @@ async def handle_client_button(update: Update, context: CallbackContext) -> None
                 if c.get('email') == email:
                     return c, inbound
         return None, None
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_client_info)
         client, inbound = future.result()
-    
+
     if client:
         up = client.get('up', 0)
         down = client.get('down', 0)
@@ -2098,7 +2098,7 @@ async def handle_client_button(update: Update, context: CallbackContext) -> None
         total_limit = client.get('total', 0)
         limit_str = format_traffic(total_limit) if total_limit > 0 else '♾️'
         status = '🟢 Активен' if client.get('enable', True) else '🔴 Отключён'
-        
+
         message = f"👤 <b>Детальная информация о клиенте</b>\n\n"
         message += f"📧 <b>Email:</b> {email}\n"
         message += f"🆔 <b>ID:</b> {client.get('id', '?')}\n"
@@ -2107,7 +2107,7 @@ async def handle_client_button(update: Update, context: CallbackContext) -> None
         message += f"💾 <b>Трафик:</b> ↑{format_traffic(up)} ↓{format_traffic(down)}\n"
         message += f"📊 <b>Всего:</b> {format_traffic(total)}\n"
         message += f"🔒 <b>Статус:</b> {status}\n"
-        
+
         # UUID и Sub ID
         try:
             import json
@@ -2152,14 +2152,14 @@ async def handle_client_button(update: Update, context: CallbackContext) -> None
                         break
         except:
             pass
-        
+
         # Лимит
         if total_limit > 0:
             pct = total / total_limit * 100 if total_limit > 0 else 0
             message += f"📈 <b>Лимит:</b> {limit_str} ({pct:.1f}%)\n"
         else:
             message += f"📈 <b>Лимит:</b> ♾️ Безлимит\n"
-        
+
         # Срок
         expiry = client.get('expiryTime', 0)
         if expiry > 0:
@@ -2170,12 +2170,12 @@ async def handle_client_button(update: Update, context: CallbackContext) -> None
             message += f"📅 <b>Осталось:</b> {int(days)} дн.\n" if days > 0 else "❌ Истек\n"
         else:
             message += f"⏰ <b>Срок:</b> ♾️ Бессрочно\n"
-        
+
         # Flow
         flow = client.get('flow', '')
         if flow:
             message += f"🌊 <b>Flow:</b> {flow}\n"
-        
+
         # IP, страна, оператор
         try:
             from xui_api import get_client_ips
@@ -2200,7 +2200,7 @@ async def handle_client_button(update: Update, context: CallbackContext) -> None
                         pass
         except:
             pass
-        
+
         # Telegram ID
         tg_id = ''
         try:
@@ -2215,15 +2215,15 @@ async def handle_client_button(update: Update, context: CallbackContext) -> None
                         break
         except:
             pass
-        
+
         if tg_id and tg_id != '0' and tg_id != '':
             message += f"🆔 <b>Telegram ID:</b> <code>{tg_id}</code>\n"
         else:
             message += f"🆔 <b>Telegram ID:</b> ❌ Не привязан\n"
-        
+
         # Кнопка Назад
         keyboard = [[InlineKeyboardButton("⬅️ К списку", callback_data=f"inbound_select_{inbound['id']}")]]
-        
+
         await query.edit_message_text(
             message,
             reply_markup=InlineKeyboardMarkup(keyboard),
@@ -2278,9 +2278,9 @@ async def clients_list(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     inbound_name = update.message.text
-    
+
     if inbound_name == "⬅️ Назад в меню":
         context.user_data['state'] = BotState.MAIN_MENU
         await update.message.reply_text(
@@ -2289,33 +2289,33 @@ async def clients_list(update: Update, context: CallbackContext) -> None:
             parse_mode=HTML
         )
         return
-    
+
     inbounds_list = context.user_data.get('inbounds_list', [])
     selected_inbound = None
-    
+
     for inbound in inbounds_list:
         remark = inbound.get('remark', '')
         if remark == inbound_name:
             selected_inbound = inbound
             break
-    
+
     if selected_inbound:
         clients = selected_inbound.get('clientStats', [])
         if not clients:
             await update.message.reply_text("❌ <b>В этом инбаунде нет клиентов</b>", parse_mode=HTML)
             return
-        
+
         context.user_data['selected_inbound'] = selected_inbound
         context.user_data['selected_inbound_name'] = inbound_name
         context.user_data['clients'] = clients
         context.user_data['state'] = BotState.CLIENTS_MENU
-        
+
         keyboard = create_clients_keyboard(clients)
-        
+
         message = f"👥 <b>Клиенты инбаунда:</b> {inbound_name}\n\n"
         message += f"📊 <b>Всего клиентов:</b> {len(clients)}\n\n"
         message += "🔍 <b>Выберите клиента для просмотра деталей:</b>"
-        
+
         await update.message.reply_text(message, reply_markup=keyboard, parse_mode=HTML)
     else:
         await update.message.reply_text("❌ <b>Инбаунд не найден</b>", parse_mode=HTML)
@@ -2323,24 +2323,24 @@ async def client_detail(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     message_text = update.message.text
-    
+
     # Проверяем, не ожидается ли подтверждение удаления
     if context.user_data.get('awaiting_delete_confirmation'):
         await handle_delete_confirmation(update, context)
         return
-    
+
     action_buttons = ["🔄 Обновить клиента", "🗑️ Удалить клиента", "📊 Сбросить трафик", "🌍 IP адреса", "🆔 Привязать TG", "⬅️ Назад к клиентам"]
     if message_text in action_buttons:
         return
-    
+
     selected_client = context.user_data.get('selected_client')
-    
+
     if not selected_client or (message_text not in action_buttons and message_text != context.user_data.get('last_client_email')):
         clients = context.user_data.get('clients', [])
         selected_client = None
-        
+
         for client in clients:
             email = client.get('email', '')
             if email == message_text:
@@ -2348,20 +2348,20 @@ async def client_detail(update: Update, context: CallbackContext) -> None:
                 context.user_data['selected_client'] = client
                 context.user_data['last_client_email'] = email
                 break
-        
+
         if not selected_client:
             await update.message.reply_text("❌ <b>Клиент не найден</b>", parse_mode=HTML)
             return
-    
+
     context.user_data['state'] = BotState.CLIENT_DETAIL_MENU
-    
+
     selected_inbound = context.user_data.get('selected_inbound', {})
     client_email = selected_client.get('email', '')
-    
+
     # Получаем полные данные клиента из настроек инбаунда
     full_client_info = None
     settings = selected_inbound.get('settings', {})
-    
+
     if isinstance(settings, str):
         try:
             if settings.strip():
@@ -2370,18 +2370,18 @@ async def client_detail(update: Update, context: CallbackContext) -> None:
                 settings = {}
         except json.JSONDecodeError:
             settings = {}
-    
+
     if isinstance(settings, dict):
         clients_settings = settings.get('clients', [])
         for client_setting in clients_settings:
             if isinstance(client_setting, dict) and client_setting.get('email') == client_email:
                 full_client_info = client_setting
                 break
-    
+
     # Получаем онлайн-статус через API панели (более точный)
     current_up = selected_client.get('up', 0)
     current_down = selected_client.get('down', 0)
-    
+
     # Используем API для получения точного онлайн-статуса
     def get_online_status():
         try:
@@ -2394,18 +2394,18 @@ async def client_detail(update: Update, context: CallbackContext) -> None:
             # Fallback на старый метод
             from xui_api import get_client_connection_status
             return get_client_connection_status(client_email, current_up, current_down), 0
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_online_status)
         is_online, last_online_ts = future.result()
-    
+
     connection_status = "🟢 Онлайн" if is_online else "🔴 Офлайн"
-    
+
     # Обновляем кэш
     from xui_api import update_traffic_history
     update_traffic_history(client_email, current_up, current_down)
     last_seen = get_client_last_seen(client_email)
-    
+
     # Форматируем информацию о клиенте
     message = "👤 <b>Детальная информация о клиенте</b>\n\n"
     message += f"📧 <b>Email:</b> {selected_client.get('email', 'N/A')}\n"
@@ -2415,20 +2415,20 @@ async def client_detail(update: Update, context: CallbackContext) -> None:
     message += f"💾 <b>Трафик:</b> ↑{format_traffic(selected_client.get('up', 0))} ↓{format_traffic(selected_client.get('down', 0))}\n"
     message += f"📊 <b>Всего трафика:</b> {format_traffic(selected_client.get('up', 0) + selected_client.get('down', 0))}\n"
     message += f"🔒 <b>Статус:</b> {'🟢 Активен' if selected_client.get('enable', True) else '🔴 Отключен'}\n"
-    
+
     if full_client_info:
         uuid = full_client_info.get('id', 'Не указан')
         sub_id = full_client_info.get('subId', 'Отсутствует')
-        
+
         message += f"🔑 <b>UUID:</b> <code>{uuid}</code>\n"
         message += f"📋 <b>Sub ID:</b> <code>{sub_id}</code>\n"
-        
+
         if sub_id and sub_id != 'Отсутствует':
             subscription_link = f"{SUBSCRIPTION_URL}/sub/{SUBSCRIPTION_EXTRA_PATH}/{sub_id}"
             message += f"\n🔗 <b>Ссылка для подписки:</b>\n\n"
             message += f"<code>{subscription_link}</code>\n\n"
             message += f"<i>Нажмите на ссылку, чтобы скопировать</i>"
-    
+
     # Прямые ссылки подключения
     if full_client_info:
         try:
@@ -2444,7 +2444,7 @@ async def client_detail(update: Update, context: CallbackContext) -> None:
                     message += "<i>Скопируйте ссылку и вставьте в приложение</i>"
         except Exception as e:
             logger.error(f"Ошибка получения прямых ссылок: {e}")
-    
+
     # Добавляем прямые ссылки подключения
     if full_client_info and sub_id and sub_id != 'Отсутствует':
         try:
@@ -2463,7 +2463,7 @@ async def client_detail(update: Update, context: CallbackContext) -> None:
     else:
         message += f"🔑 <b>UUID:</b> Не удалось получить\n"
         message += f"📋 <b>Sub ID:</b> Не удалось получить\n"
-    
+
     # Добавляем время последней активности из X-UI
     last_seen_xui = selected_client.get('last_seen', 0)
     if last_seen_xui > 0:
@@ -2472,7 +2472,7 @@ async def client_detail(update: Update, context: CallbackContext) -> None:
             last_seen_date = datetime.fromtimestamp(last_seen_timestamp).strftime('%Y-%m-%d %H:%M:%S')
             now_timestamp = datetime.now().timestamp()
             hours_ago = (now_timestamp - last_seen_timestamp) / (60 * 60)
-            
+
             if hours_ago < 1:
                 minutes_ago = hours_ago * 60
                 message += f"🕒 <b>Был(а) в сети (X-UI):</b> {last_seen_date} (~{int(minutes_ago)} мин. назад)\n"
@@ -2483,7 +2483,7 @@ async def client_detail(update: Update, context: CallbackContext) -> None:
                 message += f"🕒 <b>Был(а) в сети (X-UI):</b> {last_seen_date} (~{int(days_ago)} дн. назад)\n"
         except:
             message += f"🕒 <b>Был(а) в сети (X-UI):</b> Ошибка обработки\n"
-    
+
     # Лимиты
     total_limit = selected_client.get('total', 0)
     if total_limit > 0:
@@ -2493,7 +2493,7 @@ async def client_detail(update: Update, context: CallbackContext) -> None:
         message += f"📊 <b>Использовано:</b> {used_percent:.1f}%\n"
     else:
         message += f"📈 <b>Лимит трафика:</b> ♾️ Безлимит\n"
-    
+
     # Срок действия
     expiry_time = 0
     if full_client_info:
@@ -2502,14 +2502,14 @@ async def client_detail(update: Update, context: CallbackContext) -> None:
             expiry_time = selected_client.get('expiryTime', 0)
     else:
         expiry_time = selected_client.get('expiryTime', 0)
-    
+
     if expiry_time > 0:
         try:
             expiry_timestamp = expiry_time / 1000
             expiry_date = datetime.fromtimestamp(expiry_timestamp).strftime('%Y-%m-%d %H:%M:%S')
             now_timestamp = datetime.now().timestamp()
             days_left = (expiry_timestamp - now_timestamp) / (24 * 60 * 60)
-            
+
             if days_left > 0:
                 message += f"⏰ <b>Срок действия:</b> {expiry_date}\n"
                 message += f"📅 <b>Осталось дней:</b> {int(days_left)}\n"
@@ -2519,12 +2519,12 @@ async def client_detail(update: Update, context: CallbackContext) -> None:
             message += f"⏰ <b>Срок действия:</b> Ошибка обработки\n"
     else:
         message += f"⏰ <b>Срок действия:</b> ♾️ Бессрочно\n"
-    
+
     if full_client_info and full_client_info.get('flow'):
         message += f"🌊 <b>Flow:</b> {full_client_info.get('flow')}\n"
-    
 
-    
+
+
     # Определяем страну по IP
     try:
         from xui_api import get_client_ips
@@ -2538,11 +2538,11 @@ async def client_detail(update: Update, context: CallbackContext) -> None:
                     message += f"📡 <b>Оператор:</b> {isp}\n"
     except:
         pass
-    
+
     # Статус клиента
     total_traffic = selected_client.get('up', 0) + selected_client.get('down', 0)
     limit = selected_client.get('total', 0)
-    
+
     if total_traffic > 100 * 1024 * 1024 * 1024:  # > 100 GB
         status = "💎 VIP"
     elif total_traffic > 10 * 1024 * 1024 * 1024:  # > 10 GB
@@ -2551,7 +2551,7 @@ async def client_detail(update: Update, context: CallbackContext) -> None:
         status = "🆕 Новый"
     else:
         status = "💤 Неактивный"
-    
+
     # Если есть лимит и использовано > 80%
     if limit > 0 and total_traffic > 0:
         pct = total_traffic / limit * 100
@@ -2559,25 +2559,25 @@ async def client_detail(update: Update, context: CallbackContext) -> None:
             status = "🔴 Критический"
         elif pct > 80:
             status = "🟡 Внимание"
-    
+
     message += f"🏷️ <b>Статус:</b> {status}\n"
-    
+
     # Информация о привязке Telegram
     tg_id = full_client_info.get('tgId', '') if full_client_info else ''
     if tg_id and str(tg_id) != '0' and str(tg_id) != '':
         message += f"🆔 <b>Telegram ID:</b> <code>{tg_id}</code>\n"
-        
+
 
     else:
         message += f"🆔 <b>Telegram ID:</b> ❌ Не привязан\n"
 
         message += f"<i>Нажмите '🆔 Привязать TG' чтобы привязать</i>\n"
-    
+
     # Определение устройства по имени клиента
     email_lower = client_email.lower()
-    
+
     device_info = ""
-    
+
     # Проверяем ключевые слова в email
     if 'mobile' in email_lower or 'мобайл' in email_lower or 'phone' in email_lower:
         device_info = "📱 <b>Устройство:</b> Телефон (Mobile)"
@@ -2605,7 +2605,7 @@ async def client_detail(update: Update, context: CallbackContext) -> None:
         device_info = "💻 <b>Устройство:</b> Windows"
     elif 'linux' in email_lower or 'ubuntu' in email_lower:
         device_info = "🐧 <b>Устройство:</b> Linux"
-    
+
     # Если не определили по email — проверяем имя из базы
     if not device_info:
         try:
@@ -2624,40 +2624,40 @@ async def client_detail(update: Update, context: CallbackContext) -> None:
                     device_info = "📺 <b>Устройство:</b> Телевизор"
         except:
             pass
-    
+
     if device_info:
         message += device_info + "\n"
-    
+
     keyboard = create_client_detail_keyboard()
     await update.message.reply_text(message, reply_markup=keyboard, parse_mode=HTML)
 async def handle_delete_confirmation(update: Update, context: CallbackContext) -> None:
     """Обрабатывает подтверждение/отмену удаления клиента"""
     message_text = update.message.text
-    
+
     if message_text == "✅ Подтвердить":
         # Выполняем удаление
         selected_client = context.user_data.get('selected_client')
         selected_inbound = context.user_data.get('selected_inbound')
-        
+
         if not selected_client or not selected_inbound:
             await update.message.reply_text("❌ <b>Данные клиента утеряны</b>", parse_mode=HTML)
             context.user_data.pop('awaiting_delete_confirmation', None)
             return
-        
+
         client_email = selected_client.get('email', '')
         inbound_id = selected_inbound.get('id')
-        
+
         await update.message.reply_text("🗑️ <b>Удаляю клиента...</b>", parse_mode=HTML)
-        
+
         def do_delete():
             return delete_client_by_email(inbound_id, client_email)
-        
+
         with ThreadPoolExecutor() as executor:
             future = executor.submit(do_delete)
             success = future.result()
-        
+
         context.user_data.pop('awaiting_delete_confirmation', None)
-        
+
         if success:
             await update.message.reply_text(
                 f"✅ <b>Клиент успешно удалён!</b>\n\n"
@@ -2676,12 +2676,12 @@ async def handle_delete_confirmation(update: Update, context: CallbackContext) -
                 f"• Недостаточно прав",
                 parse_mode=HTML
             )
-    
+
     elif message_text == "❌ Отменить":
         context.user_data.pop('awaiting_delete_confirmation', None)
         await update.message.reply_text("❌ <b>Удаление отменено</b>", parse_mode=HTML)
         await client_detail(update, context)
-    
+
     else:
         # Любая другая кнопка - отмена удаления
         context.user_data.pop('awaiting_delete_confirmation', None)
@@ -2691,36 +2691,36 @@ async def refresh_client_status(update: Update, context: CallbackContext) -> Non
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     selected_client = context.user_data.get('selected_client')
-    
+
     if not selected_client:
         await update.message.reply_text("❌ <b>Клиент не выбран</b>", parse_mode=HTML)
         return
-    
+
     client_email = selected_client.get('email', '')
     selected_inbound_name = context.user_data.get('selected_inbound_name')
-    
+
     if not client_email or not selected_inbound_name:
         await update.message.reply_text("❌ <b>Недостаточно данных для обновления</b>", parse_mode=HTML)
         return
-    
+
     await update.message.reply_text("🔄 <b>Обновляю данные клиента...</b>", parse_mode=HTML)
-    
+
     def get_updated_inbounds():
         return get_inbounds_list()
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_updated_inbounds)
         inbounds_list = future.result()
-    
+
     if not inbounds_list:
         await update.message.reply_text("❌ <b>Не удалось получить данные инбаундов</b>", parse_mode=HTML)
         return
-    
+
     updated_client = None
     updated_inbound = None
-    
+
     for inbound in inbounds_list:
         remark = inbound.get('remark', '')
         if remark == selected_inbound_name:
@@ -2731,19 +2731,19 @@ async def refresh_client_status(update: Update, context: CallbackContext) -> Non
                     updated_client = client
                     break
             break
-    
+
     if updated_client and updated_inbound:
         context.user_data['selected_client'] = updated_client
         context.user_data['selected_inbound'] = updated_inbound
         context.user_data['clients'] = updated_inbound.get('clientStats', [])
-        
+
         await update.message.reply_text("✅ <b>Статус клиента обновлён</b>", parse_mode=HTML)
-        
+
         current_up = updated_client.get('up', 0)
         current_down = updated_client.get('down', 0)
         from xui_api import update_traffic_history
         update_traffic_history(client_email, current_up, current_down)
-        
+
         await client_detail(update, context)
     else:
         await update.message.reply_text(
@@ -2760,24 +2760,24 @@ async def delete_client(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     selected_client = context.user_data.get('selected_client')
     selected_inbound = context.user_data.get('selected_inbound')
-    
+
     if not selected_client or not selected_inbound:
         await update.message.reply_text("❌ <b>Клиент не выбран или данные утеряны</b>", parse_mode=HTML)
         return
-    
+
     client_email = selected_client.get('email', '')
     inbound_id = selected_inbound.get('id')
-    
+
     if not client_email or not inbound_id:
         await update.message.reply_text("❌ <b>Недостаточно данных для удаления</b>", parse_mode=HTML)
         return
-    
+
     # Запрашиваем подтверждение
     context.user_data['awaiting_delete_confirmation'] = True
-    
+
     message = (
         f"🗑️ <b>Подтверждение удаления</b>\n\n"
         f"Вы действительно хотите удалить клиента?\n\n"
@@ -2786,7 +2786,7 @@ async def delete_client(update: Update, context: CallbackContext) -> None:
         f"<b>⚠️ Это действие нельзя отменить!</b>\n\n"
         f"Нажмите <b>✅ Подтвердить</b> для удаления или <b>❌ Отменить</b> для отмены."
     )
-    
+
     await update.message.reply_text(
         message,
         reply_markup=create_delete_confirmation_keyboard(),
@@ -2797,30 +2797,30 @@ async def reset_client_traffic(update: Update, context: CallbackContext) -> None
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     selected_client = context.user_data.get('selected_client')
     selected_inbound = context.user_data.get('selected_inbound')
-    
+
     if not selected_client or not selected_inbound:
         await update.message.reply_text("❌ <b>Клиент не выбран или данные утеряны</b>", parse_mode=HTML)
         return
-    
+
     client_email = selected_client.get('email', '')
     inbound_id = selected_inbound.get('id')
-    
+
     if not client_email or not inbound_id:
         await update.message.reply_text("❌ <b>Недостаточно данных для сброса трафика</b>", parse_mode=HTML)
         return
-    
+
     await update.message.reply_text("📊 <b>Сбрасываю трафик клиента...</b>", parse_mode=HTML)
-    
+
     def do_reset():
         return reset_client_traffic(inbound_id, client_email)
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(do_reset)
         success = future.result()
-    
+
     if success:
         # Очищаем кэш трафика
         try:
@@ -2829,7 +2829,7 @@ async def reset_client_traffic(update: Update, context: CallbackContext) -> None
                 client_traffic_history.remove(client_email)
         except:
             pass
-        
+
         await update.message.reply_text(
             f"✅ <b>Трафик клиента успешно сброшен!</b>\n\n"
             f"📧 <b>Email:</b> {client_email}\n"
@@ -2837,7 +2837,7 @@ async def reset_client_traffic(update: Update, context: CallbackContext) -> None
             f"<i>Обновите данные клиента для просмотра актуальной статистики</i>",
             parse_mode=HTML
         )
-        
+
         await refresh_client_status(update, context)
     else:
         await update.message.reply_text(
@@ -2888,7 +2888,7 @@ def get_ip_info(ip):
             data = r.json()
             code = data.get('countryCode', '')
             isp = data.get('isp', '') or data.get('org', '')
-            
+
             flags = {
                 'RU': '🇷🇺 Россия', 'FI': '🇫🇮 Финляндия', 'DE': '🇩🇪 Германия',
                 'US': '🇺🇸 США', 'GB': '🇬🇧 Англия', 'FR': '🇫🇷 Франция',
@@ -2914,31 +2914,31 @@ async def show_client_ips(update: Update, context: CallbackContext) -> None:
     """Показывает IP адреса клиента"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     selected_client = context.user_data.get('selected_client')
     if not selected_client:
         await update.message.reply_text("❌ <b>Клиент не выбран</b>", parse_mode=HTML)
         return
-    
+
     email = selected_client.get('email', '')
-    
+
     await update.message.reply_text("🌍 <b>Получаю IP адреса...</b>", parse_mode=HTML)
-    
+
     def get_ips():
         from xui_api import get_client_ips
         result = get_client_ips(email)
         # get_client_ips возвращает список строк вида "ip (timestamp)"
         return result if isinstance(result, list) else []
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_ips)
         ips = future.result()
-    
+
     if ips and len(ips) > 0:
         message = f"🌍 <b>IP адреса клиента</b>\n\n"
         message += f"📧 <b>Email:</b> {email}\n\n"
         message += "<b>Последние подключения:</b>\n"
-        
+
         count = 0
         for item in ips:
             if count >= 20:
@@ -2974,15 +2974,15 @@ async def show_client_ips(update: Update, context: CallbackContext) -> None:
                     if isp:
                         message += f"  📡 {isp}\n\n"
                     continue  # Пропускаем обычный вывод
-                
+
                 count += 1
-        
+
         total = len([i for i in ips if str(i).strip()])
         if total > 20:
             message += f"\n<i>... и ещё {total - 20}</i>"
-        
+
         message += f"\n\n💡 <i>Всего записей: {total}</i>"
-        
+
         await update.message.reply_text(message, parse_mode=HTML)
     else:
         await update.message.reply_text(
@@ -2997,23 +2997,23 @@ async def bind_telegram_id(update: Update, context: CallbackContext) -> None:
     """Привязывает Telegram ID к клиенту в панели"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     selected_client = context.user_data.get('selected_client')
     selected_inbound = context.user_data.get('selected_inbound')
-    
+
     if not selected_client or not selected_inbound:
         await update.message.reply_text("❌ <b>Клиент не выбран</b>", parse_mode=HTML)
         return
-    
+
     email = selected_client.get('email', '')
     inbound_id = selected_inbound.get('id')
-    
+
     # Запрашиваем Telegram ID
     context.user_data['awaiting_tg_id'] = True
     context.user_data['state'] = BotState.BIND_TG_ID
     context.user_data['bind_email'] = email
     context.user_data['bind_inbound_id'] = inbound_id
-    
+
     # Ищем Telegram ID в базе
     db_tg_id = None
     try:
@@ -3022,19 +3022,19 @@ async def bind_telegram_id(update: Update, context: CallbackContext) -> None:
             db_tg_id = db_client['telegram_id']
     except:
         pass
-    
+
     message = f"🆔 <b>Привязка Telegram ID</b>\n\n"
     message += f"📧 <b>Клиент:</b> {email}\n"
     message += f"📡 <b>Инбаунд ID:</b> {inbound_id}\n"
-    
+
     if db_tg_id:
         message += f"🆔 <b>Telegram ID из базы:</b> <code>{db_tg_id}</code>\n"
         message += f"<i>Скопируйте ID выше и вставьте ниже</i>\n\n"
     else:
         message += f"🆔 <b>Telegram ID:</b> ❌ Не найден в базе\n\n"
-    
+
     message += "<b>Введите Telegram ID пользователя:</b>"
-    
+
     await update.message.reply_text(
         message,
         reply_markup=create_cancel_keyboard(),
@@ -3045,14 +3045,14 @@ async def handle_tg_id_input(update: Update, context: CallbackContext) -> None:
     """Обрабатывает ввод Telegram ID"""
     if not context.user_data.get('awaiting_tg_id'):
         return
-    
+
     message_text = update.message.text
-    
+
     if message_text == "❌ Отменить":
         context.user_data.pop('awaiting_tg_id', None)
         await update.message.reply_text("❌ <b>Привязка отменена</b>", parse_mode=HTML)
         return
-    
+
     # Проверяем что ввели число
     try:
         tg_id = int(message_text.strip())
@@ -3062,32 +3062,32 @@ async def handle_tg_id_input(update: Update, context: CallbackContext) -> None:
             parse_mode=HTML
         )
         return
-    
+
     email = context.user_data.get('bind_email')
     inbound_id = context.user_data.get('bind_inbound_id')
-    
+
     if not email or not inbound_id:
         await update.message.reply_text("❌ <b>Данные утеряны</b>", parse_mode=HTML)
         context.user_data.pop('awaiting_tg_id', None)
         return
-    
+
     await update.message.reply_text("🔄 <b>Привязываю Telegram ID...</b>", parse_mode=HTML)
-    
+
     # Обновляем клиента через API
     def do_bind():
         try:
             from xui_api import get_inbound_by_id
             import requests, json
-            
+
             # Получаем текущий инбаунд
             inbound = get_inbound_by_id(inbound_id)
             if not inbound:
                 return False, "Инбаунд не найден"
-            
+
             settings = inbound.get('settings', {})
             if isinstance(settings, str):
                 settings = json.loads(settings) if settings.strip() else {}
-            
+
             # Находим и обновляем клиента
             clients = settings.get('clients', [])
             found = False
@@ -3096,17 +3096,17 @@ async def handle_tg_id_input(update: Update, context: CallbackContext) -> None:
                     c['tgId'] = str(tg_id)
                     found = True
                     break
-            
+
             if not found:
                 return False, "Клиент не найден в настройках"
-            
+
             # Отправляем обновление
             from xui_api import session, _get_headers, get_current_panel_url
             url = f"{get_current_panel_url().rstrip('/')}/panel/api/inbounds/update/{inbound_id}"
-            
+
             # Обновляем settings в inbound
             inbound['settings'] = json.dumps(settings)
-            
+
             r = session.post(url, json=inbound, headers=_get_headers(), timeout=15)
             if r.status_code == 200:
                 return True, "OK"
@@ -3114,13 +3114,13 @@ async def handle_tg_id_input(update: Update, context: CallbackContext) -> None:
                 return False, f"Ошибка API: {r.status_code}"
         except Exception as e:
             return False, str(e)
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(do_bind)
         success, msg = future.result()
-    
+
     context.user_data.pop('awaiting_tg_id', None)
-    
+
     if success:
         await update.message.reply_text(
             f"✅ <b>Telegram ID привязан!</b>\n\n"
@@ -3138,19 +3138,19 @@ async def handle_tg_id_input(update: Update, context: CallbackContext) -> None:
 async def back_to_clients(update: Update, context: CallbackContext) -> None:
     """Возврат к списку клиентов текущего инбаунда"""
     context.user_data.pop('awaiting_delete_confirmation', None)  # Очищаем флаг подтверждения
-    
+
     selected_inbound_name = context.user_data.get('selected_inbound_name')
     clients = context.user_data.get('clients', [])
-    
+
     if selected_inbound_name and clients:
         context.user_data['state'] = BotState.CLIENTS_MENU
-        
+
         keyboard = create_clients_keyboard(clients)
-        
+
         message = f"👥 <b>Клиенты инбаунда:</b> {selected_inbound_name}\n\n"
         message += f"📊 <b>Всего клиентов:</b> {len(clients)}\n\n"
         message += "🔍 <b>Выберите клиента для просмотра деталей:</b>"
-        
+
         await update.message.reply_text(message, reply_markup=keyboard, parse_mode=HTML)
     else:
         await all_clients(update, context)
@@ -3161,25 +3161,25 @@ async def send_message(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     await update.message.reply_text("🔄 <b>Получаю список пользователей...</b>", parse_mode=HTML)
-    
+
     def get_users_data():
         return db.get_all_clients()
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_users_data)
         users = future.result()
-    
+
     if users:
         context.user_data['users_for_message'] = users
         context.user_data['state'] = BotState.ADMIN_CHOOSE_USER
-        
+
         keyboard = create_users_for_message_keyboard(users)
-        
+
         message = "💌 <b>Отправить сообщение пользователю</b>\n\n"
         message += "👤 <b>Выберите пользователя:</b>"
-        
+
         await update.message.reply_text(message, reply_markup=keyboard, parse_mode=HTML)
     else:
         await update.message.reply_text(
@@ -3194,9 +3194,9 @@ async def admin_choose_user(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     message_text = update.message.text
-    
+
     if message_text == "❌ Отменить":
         context.user_data['state'] = BotState.MAIN_MENU
         await update.message.reply_text(
@@ -3205,20 +3205,20 @@ async def admin_choose_user(update: Update, context: CallbackContext) -> None:
             parse_mode=HTML
         )
         return
-    
+
     users = context.user_data.get('users_for_message', [])
     selected_user = None
-    
+
     for user in users:
         user_button = f"👤 {user['name']} ({user['login']})"
         if user_button == message_text:
             selected_user = user
             break
-    
+
     if selected_user:
         context.user_data['selected_user_for_message'] = selected_user
         context.user_data['state'] = BotState.ADMIN_WRITE_MESSAGE
-        
+
         message = "💌 <b>Отправка сообщения пользователю</b>\n\n"
         message += f"👤 <b>Получатель:</b> {selected_user['name']}\n"
         message += f"📝 <b>Логин:</b> <code>{selected_user['login']}</code>\n"
@@ -3230,7 +3230,7 @@ async def admin_choose_user(update: Update, context: CallbackContext) -> None:
         message += "• Голосовое сообщение\n"
         message += "• Документы\n\n"
         message += "<i>Просто отправьте файл или наберите текст</i>"
-        
+
         await update.message.reply_text(
             message,
             reply_markup=create_cancel_keyboard(),
@@ -3243,9 +3243,9 @@ async def admin_handle_message(update: Update, context: CallbackContext) -> None
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     selected_user = context.user_data.get('selected_user_for_message')
-    
+
     if not selected_user:
         await update.message.reply_text("❌ <b>Ошибка: пользователь не выбран</b>", parse_mode=HTML)
         context.user_data['state'] = BotState.MAIN_MENU
@@ -3255,12 +3255,12 @@ async def admin_handle_message(update: Update, context: CallbackContext) -> None
             parse_mode=HTML
         )
         return
-    
+
     if context.user_data.get('state') != BotState.ADMIN_WRITE_MESSAGE:
         return
-    
+
     message_text = update.message.text
-    
+
     if message_text == "❌ Отменить":
         context.user_data['state'] = BotState.MAIN_MENU
         await update.message.reply_text(
@@ -3269,50 +3269,50 @@ async def admin_handle_message(update: Update, context: CallbackContext) -> None
             parse_mode=HTML
         )
         return
-    
+
     try:
         try:
             sticker_file_id = "CAACAgIAAxkBAAI1nWohorcFBAt5OO3MvgkJON3mDx3VAAJvAAPBnGAMyw59i8DdTVY7BA"
             await context.bot.send_sticker(
-                selected_user['telegram_id'], 
+                selected_user['telegram_id'],
                 sticker=sticker_file_id
             )
         except Exception as e:
             logger.warning(f"Не удалось отправить стикер пользователю {selected_user['telegram_id']}: {e}")
-        
+
         await asyncio.sleep(0.5)
-        
+
         from datetime import datetime
         now = datetime.now()
         months = ['Января', 'Февраля', 'Марта', 'Апреля', 'Мая', 'Июня',
                  'Июля', 'Августа', 'Сентября', 'Октября', 'Ноября', 'Декабря']
         date_str = f"{now.day} {months[now.month-1]} {now.year}"
         time_str = now.strftime('%H:%M')
-        
+
         user_message = "💌 <b>Сообщение от администратора</b>\n\n"
         user_message += f"{message_text}\n\n"
         user_message += f"📅 {date_str} | 🕐 {time_str}"
-        
+
         await context.bot.send_message(
-            selected_user['telegram_id'], 
-            user_message, 
+            selected_user['telegram_id'],
+            user_message,
             parse_mode=HTML
         )
-        
+
         await send_notification_sound_to_user(context.bot, selected_user['telegram_id'])
-        
+
         success_message = "✅ <b>Сообщение успешно отправлено!</b>\n\n"
         success_message += f"👤 <b>Пользователь:</b> {selected_user['name']}\n"
         success_message += f"📝 <b>Логин:</b> <code>{selected_user['login']}</code>\n"
         success_message += f"🆔 <b>Telegram ID:</b> <code>{selected_user['telegram_id']}</code>\n\n"
         success_message += f"💬 <b>Ваше сообщение:</b>\n{message_text}"
-        
+
         await update.message.reply_text(
             success_message,
             reply_markup=create_admin_keyboard(),
             parse_mode=HTML
         )
-        
+
     except Exception as e:
         logger.error(f"Ошибка отправки сообщения пользователю {selected_user['telegram_id']}: {e}")
         error_message = "❌ <b>Не удалось отправить сообщение</b>\n\n"
@@ -3322,13 +3322,13 @@ async def admin_handle_message(update: Update, context: CallbackContext) -> None
         error_message += "• Пользователь заблокировал бота\n"
         error_message += "• Ошибка связи с Telegram\n"
         error_message += "• Пользователь удалил аккаунт"
-        
+
         await update.message.reply_text(
             error_message,
             reply_markup=create_admin_keyboard(),
             parse_mode=HTML
         )
-    
+
     context.user_data['state'] = BotState.MAIN_MENU
 
 
@@ -3340,22 +3340,22 @@ async def admin_handle_media(update: Update, context: CallbackContext) -> None:
     """Универсальный обработчик медиа от админа"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     selected_user = context.user_data.get('selected_user_for_message')
     if not selected_user or context.user_data.get('state') != BotState.ADMIN_WRITE_MESSAGE:
         return
-    
+
     caption = update.message.caption or ""
-    
+
     try:
         # Стикер
         try:
-            await context.bot.send_sticker(selected_user['telegram_id'], 
+            await context.bot.send_sticker(selected_user['telegram_id'],
                 "CAACAgIAAxkBAAI1nWohorcFBAt5OO3MvgkJON3mDx3VAAJvAAPBnGAMyw59i8DdTVY7BA")
         except: pass
-        
+
         await asyncio.sleep(0.5)
-        
+
         # Определяем тип и отправляем
         msg = update.message
         if msg.photo:
@@ -3373,7 +3373,7 @@ async def admin_handle_media(update: Update, context: CallbackContext) -> None:
             await context.bot.send_voice(selected_user['telegram_id'], msg.voice.file_id)
             media_type = "Голосовое"
         elif msg.audio:
-            await context.bot.send_message(selected_user['telegram_id'], 
+            await context.bot.send_message(selected_user['telegram_id'],
                 f"🎵 <b>Музыка от администратора</b>\n\n{caption}" if caption else "🎵 <b>Музыка от администратора</b>",
                 parse_mode=HTML)
             await context.bot.send_audio(selected_user['telegram_id'], msg.audio.file_id,
@@ -3388,7 +3388,7 @@ async def admin_handle_media(update: Update, context: CallbackContext) -> None:
             media_type = "Документ"
         else:
             return
-        
+
         await update.message.reply_text(
             f"✅ <b>{media_type} успешно отправлено!</b>\n\n"
             f"👤 <b>Пользователь:</b> {selected_user['name']}\n"
@@ -3401,7 +3401,7 @@ async def admin_handle_media(update: Update, context: CallbackContext) -> None:
             f"❌ <b>Не удалось отправить</b>\n\n<b>Причины:</b>\n• Пользователь заблокировал бота\n• Ошибка связи",
             reply_markup=create_admin_keyboard(), parse_mode=HTML
         )
-    
+
     context.user_data['state'] = BotState.MAIN_MENU
 
 async def send_notification_sound_to_user(bot, user_id):
@@ -3415,13 +3415,13 @@ async def send_notification_sound_to_user(bot, user_id):
             os.path.join(os.getcwd(), 'notification.mp3'),
             '/app/notification.mp3',
         ]
-        
+
         for path in possible_paths:
             if path and os.path.exists(path):
                 sound_path = path
                 logger.info(f"✅ Найден звуковой файл уведомления: {path}")
                 break
-        
+
         if sound_path:
             with open(sound_path, 'rb') as audio_file:
                 await bot.send_audio(
@@ -3442,9 +3442,9 @@ async def send_notification_sound_to_user(bot, user_id):
 async def get_telegram_id(update: Update, context: CallbackContext) -> None:
     """Показывает ID пользователя с inline-кнопкой"""
     user = update.effective_user
-    
+
     keyboard = [[InlineKeyboardButton(f"📋 Скопировать ID: {user.id}", callback_data=f"copy_id_{user.id}")]]
-    
+
     device_info = ""
     try:
         user_agent = update.effective_user.user_agent if hasattr(update.effective_user, 'user_agent') else None
@@ -3457,14 +3457,14 @@ async def get_telegram_id(update: Update, context: CallbackContext) -> None:
             else: device_info = "📱 Неизвестно"
         else: device_info = "📱 Не определено"
     except: device_info = "📱 Не определено"
-    
+
     message = "👤 <b>МОЙ ПРОФИЛЬ</b>\n\n"
     message += f"🆔 <code>{user.id}</code> | 📛 {user.first_name} {user.last_name or ''}"
     if user.username:
         message += f" | @{user.username}"
     message += f"\n{device_info}\n\n"
     message += f"💡 <i>Нажми на кнопку чтобы скопировать ID</i>"
-    
+
     await update.message.reply_text(
         message,
         reply_markup=InlineKeyboardMarkup(keyboard),
@@ -3475,7 +3475,7 @@ async def commands(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     commands_text = """
 📋 <b>Доступные команды:</b>
 
@@ -3494,26 +3494,26 @@ async def users_list(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     await update.message.reply_text("🔄 <b>Получаю список пользователей...</b>", parse_mode=HTML)
-    
+
     def get_users_data():
         return db.get_all_clients()
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_users_data)
         users = future.result()
-    
+
     if users:
         context.user_data['users_list'] = users
         context.user_data['state'] = BotState.USERS_LIST_MENU
-        
+
         keyboard = create_users_list_keyboard(users)
-        
+
         message = "👤 <b>Зарегистрированные пользователи</b>\n\n"
         message += f"📊 <b>Всего пользователей:</b> {len(users)}\n\n"
         message += "🔍 <b>Выберите пользователя или нажмите ➕ для добавления:</b>"
-        
+
         await update.message.reply_text(message, reply_markup=keyboard, parse_mode=HTML)
     else:
         await update.message.reply_text(
@@ -3528,33 +3528,33 @@ async def user_detail(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     message_text = update.message.text
-    
-    action_buttons = ["✏️ Редактировать логин", "📞 Редактировать телефон", "👤 Редактировать имя", 
+
+    action_buttons = ["✏️ Редактировать логин", "📞 Редактировать телефон", "👤 Редактировать имя",
                      "🔒 Блокировать/Разблокировать", "🗑️ Удалить пользователя", "⬅️ Назад к списку"]
     if message_text in action_buttons:
         return
-    
+
     users = context.user_data.get('users_list', [])
     selected_user = None
-    
+
     for user in users:
         user_button = f"👤 {user['name']} ({user['login']})"
         if user_button == message_text:
             selected_user = user
             break
-    
+
     if selected_user:
         context.user_data['selected_user'] = selected_user
         # Перезагружаем из базы чтобы получить свежие данные
         selected_user = db.get_client_by_id(selected_user['id'])
         context.user_data['state'] = BotState.USER_DETAIL_MENU
-        
+
         registration_date = selected_user['registration_date']
         if not isinstance(registration_date, str):
             registration_date = registration_date.strftime('%Y-%m-%d %H:%M:%S')
-        
+
         message = "👤 <b>Детальная информация о пользователе</b>\n\n"
         import sqlite3
         conn = sqlite3.connect('clients.db')
@@ -3580,7 +3580,7 @@ async def user_detail(update: Update, context: CallbackContext) -> None:
         else:
             message += f"📅 <b>Дата регистрации:</b> {reg_date}\n"
         message += f"🔒 <b>Статус:</b> {'🟢 Активен' if selected_user['is_active'] else '🔴 Заблокирован'}\n"
-        
+
         birthday = selected_user.get('birthday', '')
         if birthday:
             try:
@@ -3596,13 +3596,13 @@ async def user_detail(update: Update, context: CallbackContext) -> None:
         city = selected_user.get('city', '')
         if city:
             message += f"🏙️ <b>Город:</b> {city}\n"
-        
+
         hwid = selected_user.get('hwid', '')
         if hwid:
             message += f"📱 <b>HWID:</b> <code>{hwid}</code>\n"
         else:
             message += f"📱 <b>HWID:</b> не задан\n"
-        
+
         keyboard = create_user_actions_keyboard()
         await update.message.reply_text(message, reply_markup=keyboard, parse_mode=HTML)
     else:
@@ -3614,14 +3614,14 @@ async def edit_user_city(update: Update, context: CallbackContext) -> None:
     """Редактирование города — простой ввод"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     selected_user = context.user_data.get('selected_user')
     if not selected_user:
         await update.message.reply_text("❌ Пользователь не выбран", parse_mode=HTML)
         return
-    
+
     context.user_data['awaiting_city'] = True
-    
+
     current = selected_user.get('city', '') or 'не задан'
     await update.message.reply_text(
         f"🏙️ <b>Город проживания</b>\n\n"
@@ -3634,15 +3634,15 @@ async def edit_user_hwid(update: Update, context: CallbackContext) -> None:
     """Редактирование HWID"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     selected_user = context.user_data.get('selected_user')
     if not selected_user:
         await update.message.reply_text("❌ Пользователь не выбран", parse_mode=HTML)
         return
-    
+
     context.user_data['awaiting_hwid'] = True
     context.user_data['state'] = BotState.USER_EDIT_HWID
-    
+
     current = selected_user.get('hwid', '') or 'не задан'
     await update.message.reply_text(
         f"📱 <b>HWID устройства</b>\n\n"
@@ -3656,16 +3656,16 @@ async def edit_user_birthday(update: Update, context: CallbackContext) -> None:
     """Редактирование даты рождения — простой ввод"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     selected_user = context.user_data.get('selected_user')
     if not selected_user:
         await update.message.reply_text("❌ Пользователь не выбран", parse_mode=HTML)
         return
-    
+
     # Сохраняем что ждём дату
     context.user_data['awaiting_birthday'] = True
     context.user_data['state'] = BotState.USER_EDIT_BIRTHDAY
-    
+
     current = selected_user.get('birthday', '') or 'не задана'
     await update.message.reply_text(
         f"🎂 <b>Дата рождения</b>\n\n"
@@ -3679,15 +3679,15 @@ async def edit_user_login(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     selected_user = context.user_data.get('selected_user')
     if not selected_user:
         await update.message.reply_text("❌ <b>Пользователь не выбран</b>", parse_mode=HTML)
         return
-    
+
     context.user_data['state'] = BotState.USER_EDIT_LOGIN
     context.user_data['edit_field'] = 'login'
-    
+
     await update.message.reply_text(
         f"✏️ <b>Редактирование логина</b>\n\n"
         f"Текущий логин: <code>{selected_user['login']}</code>\n\n"
@@ -3700,15 +3700,15 @@ async def edit_user_phone(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     selected_user = context.user_data.get('selected_user')
     if not selected_user:
         await update.message.reply_text("❌ <b>Пользователь не выбран</b>", parse_mode=HTML)
         return
-    
+
     context.user_data['state'] = BotState.USER_EDIT_PHONE
     context.user_data['edit_field'] = 'phone'
-    
+
     await update.message.reply_text(
         f"📞 <b>Редактирование телефона</b>\n\n"
         f"Текущий телефон: <code>{selected_user['phone']}</code>\n\n"
@@ -3723,15 +3723,15 @@ async def edit_user_name(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     selected_user = context.user_data.get('selected_user')
     if not selected_user:
         await update.message.reply_text("❌ <b>Пользователь не выбран</b>", parse_mode=HTML)
         return
-    
+
     context.user_data['state'] = BotState.USER_EDIT_NAME
     context.user_data['edit_field'] = 'name'
-    
+
     await update.message.reply_text(
         f"👤 <b>Редактирование имени</b>\n\n"
         f"Текущее имя: {selected_user['name']}\n\n"
@@ -3744,19 +3744,19 @@ async def toggle_user_active(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     selected_user = context.user_data.get('selected_user')
     if not selected_user:
         await update.message.reply_text("❌ <b>Пользователь не выбран</b>", parse_mode=HTML)
         return
-    
+
     def toggle_in_db():
         return db.toggle_client_active(selected_user['id'])
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(toggle_in_db)
         new_state = future.result()
-    
+
     if new_state is not None:
         action = "разблокирован" if new_state else "заблокирован"
         await update.message.reply_text(
@@ -3774,14 +3774,14 @@ async def delete_user(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     selected_user = context.user_data.get('selected_user')
     if not selected_user:
         await update.message.reply_text("❌ <b>Пользователь не выбран</b>", parse_mode=HTML)
         return
-    
+
     context.user_data['state'] = BotState.USER_CONFIRM_DELETE
-    
+
     await update.message.reply_text(
         f"🗑️ <b>Подтверждение удаления</b>\n\n"
         f"Вы действительно хотите удалить пользователя?\n\n"
@@ -3797,19 +3797,19 @@ async def confirm_user_delete(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     selected_user = context.user_data.get('selected_user')
     if not selected_user:
         await update.message.reply_text("❌ <b>Пользователь не выбран</b>", parse_mode=HTML)
         return
-    
+
     def delete_from_db():
         return db.delete_client(selected_user['id'])
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(delete_from_db)
         success = future.result()
-    
+
     if success:
         await update.message.reply_text(
             f"✅ <b>Пользователь удален</b>\n\n"
@@ -3838,21 +3838,21 @@ async def handle_add_user_input(update: Update, context: CallbackContext) -> Non
     """Обрабатывает ввод данных при добавлении пользователя"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     adding = context.user_data.get('adding_user')
     if not adding:
         return
-    
+
     text = update.message.text.strip()
-    
+
     if text == "❌ Отмена":
         context.user_data.pop('adding_user', None)
         await update.message.reply_text("❌ Добавление отменено", parse_mode='HTML')
         await users_list(update, context)
         return
-    
+
     step = adding.get('step')
-    
+
     if step == 'login':
         adding['login'] = text
         adding['step'] = 'name'
@@ -3886,10 +3886,10 @@ async def handle_add_user_input(update: Update, context: CallbackContext) -> Non
         except:
             tg_id = 0
         adding['tg_id'] = tg_id
-        
+
         from database import db
         success = db.add_client(tg_id, adding['login'], adding['phone'], adding['name'])
-        
+
         if success:
             await update.message.reply_text(
                 f"✅ <b>ПОЛЬЗОВАТЕЛЬ ДОБАВЛЕН!</b>\n\n"
@@ -3906,7 +3906,7 @@ async def handle_add_user_input(update: Update, context: CallbackContext) -> Non
                 reply_markup=create_admin_keyboard(),
                 parse_mode='HTML'
             )
-        
+
         context.user_data.pop('adding_user', None)
         context.user_data['state'] = BotState.MAIN_MENU
 
@@ -3918,17 +3918,17 @@ async def handle_user_edit_input(update: Update, context: CallbackContext) -> No
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     current_state = context.user_data.get('state')
     edit_field = context.user_data.get('edit_field')
     selected_user = context.user_data.get('selected_user')
-    
+
     if not selected_user or not edit_field:
         await update.message.reply_text("❌ <b>Ошибка: данные редактирования не найдены</b>", parse_mode=HTML)
         return
-    
+
     new_value = update.message.text.strip()
-    
+
     if edit_field == 'login2' or edit_field == 'birthday' or edit_field == 'city':
         pass  # без валидации для второго логина
     elif edit_field == 'login2' or edit_field == 'birthday' or edit_field == 'city':
@@ -3941,7 +3941,7 @@ async def handle_user_edit_input(update: Update, context: CallbackContext) -> No
                 parse_mode=HTML
             )
             return
-    
+
     elif edit_field == 'phone':
         if not re.match(r'^(\+79\d{9}|\+9936\d{8})$', new_value):
             await update.message.reply_text(
@@ -3952,7 +3952,7 @@ async def handle_user_edit_input(update: Update, context: CallbackContext) -> No
                 parse_mode=HTML
             )
             return
-    
+
     elif edit_field == 'name':
         if len(new_value) < 2 or len(new_value) > 50:
             await update.message.reply_text(
@@ -3961,16 +3961,16 @@ async def handle_user_edit_input(update: Update, context: CallbackContext) -> No
                 parse_mode=HTML
             )
             return
-    
+
     context.user_data['new_value'] = new_value
     context.user_data['awaiting_confirmation'] = True
-    
+
     field_names = {
         'login': 'логин',
-        'phone': 'телефон', 
+        'phone': 'телефон',
         'name': 'имя'
     }
-    
+
     await update.message.reply_text(
         f"✅ <b>Подтвердите изменение</b>\n\n"
         f"Поле: <b>{field_names[edit_field]}</b>\n"
@@ -3985,15 +3985,15 @@ async def confirm_edit(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     selected_user = context.user_data.get('selected_user')
     edit_field = context.user_data.get('edit_field')
     new_value = context.user_data.get('new_value')
-    
+
     if not all([selected_user, edit_field, new_value]):
         await update.message.reply_text("❌ <b>Ошибка: данные для сохранения не найдены</b>", parse_mode=HTML)
         return
-    
+
     success = False
     if edit_field == 'login2' or edit_field == 'birthday' or edit_field == 'city':
         pass  # без валидации для второго логина
@@ -4003,25 +4003,25 @@ async def confirm_edit(update: Update, context: CallbackContext) -> None:
         success = db.update_client_phone(selected_user['id'], new_value)
     elif edit_field == 'name':
         success = db.update_client_name(selected_user['id'], new_value)
-    
-    
-    
+
+
+
     if success:
         if edit_field in selected_user:
             selected_user[edit_field] = new_value
-        
+
         field_names = {
             'login': 'логин',
             'phone': 'телефон',
             'name': 'имя'
         }
-        
+
         await update.message.reply_text(
             f"✅ <b>{field_names[edit_field].title()} успешно обновлен</b>\n\n"
             f"Новое значение: <code>{new_value}</code>",
             parse_mode=HTML
         )
-        
+
         pass  # убран вызов
     else:
         await update.message.reply_text(
@@ -4034,11 +4034,11 @@ async def cancel_edit(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     context.user_data.pop('edit_field', None)
     context.user_data.pop('new_value', None)
     context.user_data.pop('awaiting_confirmation', None)
-    
+
     await update.message.reply_text("❌ <b>Редактирование отменено</b>", parse_mode=HTML)
 # ==================== ФУНКЦИИ ДЛЯ ОНЛАЙН КЛИЕНТОВ ====================
 
@@ -4046,17 +4046,17 @@ async def online(update: Update, context: CallbackContext) -> None:
     """Inline-меню онлайн клиентов"""
     if not is_admin(update.effective_user.id):
         return
-    
+
     await update.message.reply_text("🔄 <b>Получаю список онлайн клиентов...</b>", parse_mode=HTML)
-    
+
     def get_online_data():
         from panel_manager import get_panels_list, set_active_panel, get_active_panel
         from xui_api import get_online_clients, get_inbounds_list
-        
+
         panels = get_panels_list()
         original = get_active_panel()['id']
         result = []
-        
+
         for panel in panels:
             set_active_panel(panel['id'])
             online = get_online_clients()
@@ -4082,23 +4082,23 @@ async def online(update: Update, context: CallbackContext) -> None:
                 'online': len(online),
                 'clients': clients
             })
-        
+
         set_active_panel(original)
         return result
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_online_data)
         panels_data = future.result()
-    
+
     for panel in panels_data:
         if panel['online'] == 0:
             continue
-        
+
         keyboard = []
         row = []
         for c in panel['clients']:
             row.append(InlineKeyboardButton(
-                f"👤 {c['email'][:20]}", 
+                f"👤 {c['email'][:20]}",
                 callback_data=f"online_info_{c['email']}"
             ))
             if len(row) == 2:
@@ -4106,9 +4106,9 @@ async def online(update: Update, context: CallbackContext) -> None:
                 row = []
         if row:
             keyboard.append(row)
-        
+
         message = f"{panel['emoji']} <b>{panel['name']}</b> — 🟢 {panel['online']} онлайн"
-        
+
         if keyboard:
             keyboard.append([InlineKeyboardButton("🔄 Обновить", callback_data="online_refresh")])
             await update.message.reply_text(
@@ -4116,7 +4116,7 @@ async def online(update: Update, context: CallbackContext) -> None:
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode=HTML
             )
-    
+
     if not panels_data or all(p['online'] == 0 for p in panels_data):
         await update.message.reply_text("❌ <b>Нет клиентов онлайн</b>", parse_mode=HTML)
 
@@ -4127,14 +4127,14 @@ async def handle_server_refresh(update: Update, context: CallbackContext) -> Non
     await query.answer("🔄 Обновлено!")
     from server_info import get_server_status
     from datetime import datetime
-    
+
     def get_data():
         return get_server_status()
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_data)
         info = future.result()
-    
+
     now = datetime.now().strftime('%H:%M:%S')
     if info:
         info += f"\n\n<i>Обновлено: {now}</i>"
@@ -4149,7 +4149,7 @@ async def handle_online_refresh(update: Update, context: CallbackContext) -> Non
     await query.answer("Обновлено!")
     from datetime import datetime
     now = datetime.now().strftime('%H:%M:%S')
-    
+
     def get_online_data():
         from panel_manager import get_panels_list, set_active_panel, get_active_panel
         from xui_api import get_online_clients, get_inbounds_list
@@ -4178,16 +4178,16 @@ async def handle_online_refresh(update: Update, context: CallbackContext) -> Non
             result.append({'name': panel['name'], 'emoji': panel['emoji'], 'online': len(online), 'clients': clients})
         set_active_panel(original)
         return result
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_online_data)
         panels_data = future.result()
-    
+
     # Перестраиваем сообщение
     has_online = False
     message_parts = []
     all_keyboards = []
-    
+
     for panel in panels_data:
         if panel['online'] == 0:
             continue
@@ -4202,14 +4202,14 @@ async def handle_online_refresh(update: Update, context: CallbackContext) -> Non
         if row:
             keyboard.append(row)
         keyboard.append([InlineKeyboardButton("🔄 Обновить", callback_data="online_refresh")])
-        
+
         msg = f"{panel['emoji']} <b>{panel['name']}</b> — 🟢 {panel['online']} онлайн\n<i>Обновлено: {now}</i>"
         message_parts.append((msg, keyboard))
-    
+
     if not has_online:
         await query.edit_message_text("❌ <b>Нет клиентов онлайн</b>", parse_mode=HTML)
         return
-    
+
     # Показываем только первую панель (остальные можно добавить)
     msg, keyboard = message_parts[0]
     await query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=HTML)
@@ -4218,12 +4218,12 @@ async def handle_online_info(update: Update, context: CallbackContext) -> None:
     """Показывает информацию о клиенте по кнопке"""
     query = update.callback_query
     await query.answer("📊 Загружаю информацию...")
-    
+
     email = query.data.replace("online_info_", "")
-    
+
     def get_client_info():
         from xui_api import get_inbounds_list
-        
+
         inbounds = get_inbounds_list()
         for inbound in inbounds:
             for c in inbound.get('clientStats', []):
@@ -4244,15 +4244,15 @@ async def handle_online_info(update: Update, context: CallbackContext) -> None:
                         'expiry': c.get('expiryTime', 0)
                     }
         return None
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_client_info)
         info = future.result()
-    
+
     if info:
         status = '🟢 Активен' if info['enable'] else '🔴 Отключён'
         limit = f"{format_traffic(info['total_limit'])}" if info['total_limit'] > 0 else '♾️'
-        
+
         message = f"👤 <b>Детальная информация о клиенте</b>\n\n"
         message += f"📧 <b>Email:</b> {info['email']}\n"
         message += f"📡 <b>Инбаунд:</b> {info['inbound']}\n"
@@ -4263,7 +4263,7 @@ async def handle_online_info(update: Update, context: CallbackContext) -> None:
         message += f"📊 <b>Всего:</b> {format_traffic(info['total'])} / {limit}\n"
         message += f"🔒 <b>Статус:</b> {status}\n"
         message += f"🟢 <b>Онлайн</b>\n\n"
-        
+
         # IP, страна, оператор
         try:
             from xui_api import get_client_ips
@@ -4288,7 +4288,7 @@ async def handle_online_info(update: Update, context: CallbackContext) -> None:
                         pass
         except:
             pass
-        
+
         # Срок
         expiry = info.get('expiry', 0)
         if expiry > 0:
@@ -4300,7 +4300,7 @@ async def handle_online_info(update: Update, context: CallbackContext) -> None:
                 message += f"📅 <b>Осталось:</b> {int(days)} дн.\n"
         else:
             message += f"⏰ <b>Срок:</b> ♾️ Бессрочно\n"
-        
+
         await query.edit_message_text(message, parse_mode=HTML)
     else:
         await query.edit_message_text(f"❌ Клиент не найден", parse_mode=HTML)
@@ -4310,15 +4310,15 @@ async def online_old(update: Update, context: CallbackContext) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     await update.message.reply_text("🔄 <b>Получаю список онлайн клиентов через API...</b>", parse_mode=HTML)
-    
+
     def get_online_data():
         try:
             online_emails = get_online_clients()
             last_online_map = get_last_online()
             inbounds = get_inbounds_list()
-            
+
             online_details = []
             for inbound in inbounds:
                 clients = inbound.get('clientStats', [])
@@ -4334,29 +4334,29 @@ async def online_old(update: Update, context: CallbackContext) -> None:
                             'enable': client.get('enable', True),
                             'last_online_ts': last_online_map.get(email, 0)
                         })
-            
+
             logger.info(f"Онлайн клиентов через API: {len(online_details)}")
             return online_details
         except Exception as e:
             logger.error(f"Ошибка получения онлайн клиентов: {e}")
             return []
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_online_data)
         online_clients = future.result()
-    
+
     if online_clients:
         online_clients.sort(key=lambda x: x['email'])
-        
+
         message = "🌐 <b>Онлайн клиенты (API панели)</b>\n\n"
         message += f"🟢 <b>Сейчас онлайн:</b> {len(online_clients)} клиентов\n\n"
-        
+
         for i, client in enumerate(online_clients, 1):
             email = client.get('email', 'Без email')
             inbound_name = client.get('inbound', 'Unknown')
             traffic_up = format_traffic(client.get('up', 0))
             traffic_down = format_traffic(client.get('down', 0))
-            
+
             last_ts = client.get('last_online_ts', 0)
             last_seen_str = ""
             if last_ts > 0:
@@ -4365,15 +4365,15 @@ async def online_old(update: Update, context: CallbackContext) -> None:
                     last_seen_str = f" (был {diff}с назад)"
                 elif diff < 3600:
                     last_seen_str = f" (был {diff // 60}мин назад)"
-            
+
             message += f"{i}. <code>{email}</code>{last_seen_str}\n"
             message += f"   📡 Инбаунд: {inbound_name}\n"
             message += f"   📊 Трафик: ↑{traffic_up} ↓{traffic_down}\n\n"
-        
+
         message += "💡 <i>Данные получены напрямую из панели 3x-ui</i>"
-        
+
         await update.message.reply_text(
-            message, 
+            message,
             reply_markup=create_admin_keyboard(),
             parse_mode=HTML
         )
@@ -4392,21 +4392,21 @@ async def statistics(update: Update, context: CallbackContext) -> None:
     """Показывает информацию о клиенте"""
     user = update.effective_user
     client = db.get_client_by_telegram_id(user.id)
-    
+
     if not client:
         await update.message.reply_text("❌ <b>Вы не зарегистрированы</b>", parse_mode=HTML)
         return
-    
+
     await update.message.reply_text("🔄 <b>Получаю информацию...</b>", parse_mode=HTML)
-    
+
     def get_all_info():
         from xui_api import get_inbounds_list, get_client_ips
         from datetime import datetime
         import requests as req
-        
+
         inbounds = get_inbounds_list()
         result = {'found': False}
-        
+
         for inbound in inbounds:
             for c in inbound.get('clientStats', []):
                 if c.get('email') == client['login']:
@@ -4417,7 +4417,7 @@ async def statistics(update: Update, context: CallbackContext) -> None:
                     result['enable'] = c.get('enable', True)
                     result['expiry'] = c.get('expiryTime', 0)
                     break
-        
+
         # IP и гео
         try:
             ips = get_client_ips(client['login'])
@@ -4446,23 +4446,23 @@ async def statistics(update: Update, context: CallbackContext) -> None:
                             result['city'] = loc.get('city_with_type', '')
                     except: pass
         except: pass
-        
+
         return result
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_all_info)
         info = future.result()
-    
+
     months = ['Января', 'Февраля', 'Марта', 'Апреля', 'Мая', 'Июня',
              'Июля', 'Августа', 'Сентября', 'Октября', 'Ноября', 'Декабря']
     now = datetime.now()
-    
+
     message = "📊 <b>ИНФОРМАЦИЯ</b>\n\n"
     message += f"👤 <b>{client['name']}</b>\n"
     message += f"📝 <b>Логин:</b> <code>{client['login']}</code>\n"
     message += "──────────────────\n"
     message += f"📞 <b>Телефон:</b> <code>{client['phone']}</code>\n" + (f"📶 <b>Сим-карта:</b> {get_operator(client.get('phone', '')).replace(' | 📶 ', '')}\n" if get_operator(client.get('phone', '')) else "")
-    
+
     # Дата регистрации
     reg_date = client['registration_date']
     if isinstance(reg_date, str):
@@ -4471,7 +4471,7 @@ async def statistics(update: Update, context: CallbackContext) -> None:
             message += f"📅 <b>Регистрация:</b> {dt.day} {months[dt.month-1]} {dt.year}\n"
         except:
             pass
-    
+
     # Гео
     if info.get('region'):
         message += f"🏙️ <b>Область:</b> {info['region']}\n"
@@ -4488,7 +4488,7 @@ async def statistics(update: Update, context: CallbackContext) -> None:
         message += f"📡 <b>Оператор:</b> {info['isp']}\n"
     message += "──────────────────\n"
     # ДР
-    
+
     # День рождения
     birthday = client.get('birthday', '')
     if birthday:
@@ -4499,20 +4499,20 @@ async def statistics(update: Update, context: CallbackContext) -> None:
             message += f"♒ <b>Зодиак:</b> {zodiac}\n"
         except:
             pass
-    
+
     # Трафик
     if info.get('found'):
         up = format_traffic(info.get('up', 0))
         down = format_traffic(info.get('down', 0))
         total = format_traffic(info.get('up', 0) + info.get('down', 0))
-        
+
         if info.get('total', 0) > 0:
             pct = (info.get('up', 0) + info.get('down', 0)) / info['total'] * 100
         else:
             pass
-        
+
         status = '🟢' if info.get('enable', True) else '🔴'
-        
+
         expiry = info.get('expiry', 0)
         if expiry > 0:
             dt = datetime.fromtimestamp(expiry / 1000)
@@ -4520,7 +4520,7 @@ async def statistics(update: Update, context: CallbackContext) -> None:
             message += f" | ⏰ {dt.strftime('%d.%m.%Y')}"
             message += f" ({int(days)}дн)" if days > 0 else " ❌"
         else:
-    
+
             pass
     await update.message.reply_text(message, parse_mode=HTML)
 
@@ -4532,15 +4532,15 @@ async def direct_keys(update: Update, context: CallbackContext) -> None:
         reply_fn = message.reply_text
     else:
         reply_fn = update.message.reply_text
-    
+
     user = update.effective_user
     client = db.get_client_by_telegram_id(user.id)
     if not client:
         await reply_fn("❌ <b>Вы не зарегистрированы</b>", parse_mode='HTML')
         return
-    
+
     await reply_fn("🔑 <b>Получаю прямые ключи...</b>", parse_mode='HTML')
-    
+
     def get_keys():
         from xui_api import get_inbounds_list, get_sub_links_new
         inbounds = get_inbounds_list()
@@ -4565,15 +4565,15 @@ async def direct_keys(update: Update, context: CallbackContext) -> None:
                                 'links': links
                             })
         return results
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_keys)
         results = future.result()
-    
+
     if not results:
         await update.message.reply_text("❌ <b>Ключи не найдены</b>", parse_mode='HTML')
         return
-    
+
     message = "🔑 <b>ПРЯМЫЕ КЛЮЧИ</b>\n━━━━━━━━━━━━━━━━━\n\n"
     for r in results:
         message += f"📡 <b>{r['remark']}</b>\n"
@@ -4582,7 +4582,7 @@ async def direct_keys(update: Update, context: CallbackContext) -> None:
             message += f"{i}. <code>{short}</code>\n"
         message += "\n"
     message += "<i>Нажмите на ключ чтобы скопировать</i>"
-    
+
     await reply_fn(message, parse_mode='HTML')
 
 
@@ -4593,17 +4593,17 @@ DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 async def ai_help(update: Update, context: CallbackContext) -> None:
     """AI-помощник для клиентов — режим диалога"""
     user = update.effective_user
-    
+
     # Проверяем что клиент зарегистрирован
     client = db.get_client_by_telegram_id(user.id)
     if not client:
         await update.message.reply_text("❌ <b>Вы не зарегистрированы</b>", parse_mode='HTML')
         return
-    
+
     context.user_data['asking_ai'] = True
-    
+
     keyboard = [[InlineKeyboardButton("❌ Выйти из AI", callback_data="ai_exit")]]
-    
+
     await update.message.reply_text(
         "🤖 <b>AI ПОМОЩНИК (диалог)</b>\n\n"
         "Задавайте вопросы о VPN, подключении, настройках.\n"
@@ -4617,15 +4617,15 @@ async def ai_answer(update: Update, context: CallbackContext) -> None:
     """Отправляет вопрос в DeepSeek и возвращает ответ"""
     if not context.user_data.get('asking_ai'):
         return
-    
+
     question = update.message.text
-    
+
     # Проверяем команду выхода
     if question == "❌ Выйти из AI":
         context.user_data.pop('asking_ai')
         await update.message.reply_text("✅ <b>Вы вышли из AI-помощника.</b> Используйте кнопки меню.", parse_mode='HTML')
         return
-    
+
     import logging
     logging.getLogger(__name__).info(f"AI вопрос: {question}")
     await update.message.reply_text("🤖 <b>Думаю...</b>", parse_mode='HTML')
@@ -4640,11 +4640,11 @@ async def ai_answer(update: Update, context: CallbackContext) -> None:
             return "❌ Ошибка AI. Попробуйте позже."
         except:
             return "❌ AI недоступен. Попробуйте позже."
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(ask_deepseek, question)
         answer = future.result()
-    
+
     await update.message.reply_text(
         f"🤖 <b>Ответ AI:</b>\n\n{answer}\n\n<i>💡 Это автоматический ответ. Для связи с администратором нажмите «💬 Написать админу»</i>",
         parse_mode='HTML'
@@ -4655,15 +4655,15 @@ async def link(update: Update, context: CallbackContext) -> None:
     """Показывает ссылку подписки"""
     user = update.effective_user
     client = db.get_client_by_telegram_id(user.id)
-    
+
     if not client:
         await update.message.reply_text("❌  <b>Вы не зарегистрированы в системе</b>", parse_mode=HTML)
         return
-    
-    
-    
+
+
+
     await update.message.reply_text("🔄 <b>Получаю информацию о вашей подписке...</b>", parse_mode=HTML)
-    
+
     def get_sub_data():
         try:
             inbounds = get_inbounds_list()
@@ -4677,7 +4677,7 @@ async def link(update: Update, context: CallbackContext) -> None:
                             settings = {}
                     except json.JSONDecodeError:
                         settings = {}
-                
+
                 if isinstance(settings, dict):
                     clients_settings = settings.get('clients', [])
                     for xui_client in clients_settings:
@@ -4711,14 +4711,14 @@ async def link(update: Update, context: CallbackContext) -> None:
         except Exception as e:
             logger.error(f"Ошибка получения ссылки подписки: {e}")
             return None, None
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(get_sub_data)
         result = future.result()
-    
+
     if result and result[0]:
         subscription_link, sub_id = result
-        
+
         # Формируем JSON ссылку
         json_link = ""
         try:
@@ -4727,14 +4727,14 @@ async def link(update: Update, context: CallbackContext) -> None:
                 json_link = ""  # JSON ссылка теперь через API
         except:
             pass
-        
+
         # Inline-кнопки
         keyboard = []
         if subscription_link:
             keyboard.append([InlineKeyboardButton("📋 Открыть подписку", url=subscription_link)])
-        
-        
-        
+
+
+
         message = f"👤 <b>Логин:</b> <code>{client['login']}</code>\n\n"
         message += "🔗 <b>СТРАНИЦА ПОДПИСКИ</b>\n"
         message += "━━━━━━━━━━━━━━━━━\n"
@@ -4755,16 +4755,16 @@ async def qr_code(update: Update, context: CallbackContext) -> None:
     """Меню выбора QR-кода"""
     user = update.effective_user
     client = db.get_client_by_telegram_id(user.id)
-    
+
     if not client:
         await update.message.reply_text("❌ <b>Вы не зарегистрированы</b>", parse_mode=HTML)
         return
-    
+
     keyboard = [
         [InlineKeyboardButton("📋 Обычная подписка", callback_data="qr_sub")],
         [InlineKeyboardButton("📋 JSON подписка", callback_data="qr_json")],
     ]
-    
+
     await update.message.reply_text(
         "📱 <b>QR-КОД</b>\n\n"
         "<b>Выберите тип подписки:</b>",
@@ -4776,14 +4776,14 @@ async def handle_qr_callback(update: Update, context: CallbackContext) -> None:
     """Обрабатывает выбор QR-кода"""
     query = update.callback_query
     await query.answer()
-    
+
     user = query.from_user
     client = db.get_client_by_telegram_id(user.id)
-    
+
     if not client:
         await query.edit_message_text("❌ <b>Вы не зарегистрированы</b>", parse_mode=HTML)
         return
-    
+
     def get_sub_data():
         try:
             from xui_api import _get
@@ -4795,12 +4795,12 @@ async def handle_qr_callback(update: Update, context: CallbackContext) -> None:
             return None
         except:
             return None
-    
+
     sub_id = get_sub_data()
     if not sub_id:
         await query.edit_message_text("❌ <b>Подписка не найдена</b>", parse_mode=HTML)
         return
-    
+
     # Получаем настройки из панели
     from xui_api import get_sub_settings
     sub_set = get_sub_settings()
@@ -4821,7 +4821,7 @@ async def handle_qr_callback(update: Update, context: CallbackContext) -> None:
         except:
             pass
     host = sub_dom if sub_dom else '127.0.0.1'
-    
+
     if query.data == "qr_sub":
         link = f"https://{host}:{sub_port}{sub_path}{sub_id}"
         label = "Обычная подписка"
@@ -4831,7 +4831,7 @@ async def handle_qr_callback(update: Update, context: CallbackContext) -> None:
         host = sub_dom if sub_dom else '127.0.0.1'
         link = f"https://{host}:{sub_port}{sub_path}{sub_id}"  # JSON
         label = "JSON подписка"
-    
+
     # Генерируем QR
     qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
     qr.add_data(link)
@@ -4840,7 +4840,7 @@ async def handle_qr_callback(update: Update, context: CallbackContext) -> None:
     bio = BytesIO()
     img.save(bio, 'PNG')
     bio.seek(0)
-    
+
     await query.message.reply_photo(
         photo=bio,
         caption=f"📱 <b>QR-код: {label}</b>\n<code>{link[:60]}...</code>",
@@ -4852,13 +4852,13 @@ async def qr_code_old(update: Update, context: CallbackContext) -> None:
     """Генерирует QR-код для подключения"""
     user = update.effective_user
     client = db.get_client_by_telegram_id(user.id)
-    
+
     if not client:
         await update.message.reply_text("❌ <b>Вы не зарегистрированы в системе</b>", parse_mode=HTML)
         return
-    
+
     await update.message.reply_text("🔄 <b>Генерирую QR-код для подключения...</b>", parse_mode=HTML)
-    
+
     def generate_qr_code():
         try:
             inbounds = get_inbounds_list()
@@ -4872,7 +4872,7 @@ async def qr_code_old(update: Update, context: CallbackContext) -> None:
                             settings = {}
                     except json.JSONDecodeError:
                         settings = {}
-                
+
                 if isinstance(settings, dict):
                     clients_settings = settings.get('clients', [])
                     for xui_client in clients_settings:
@@ -4880,7 +4880,7 @@ async def qr_code_old(update: Update, context: CallbackContext) -> None:
                             sub_id = xui_client.get('subId')
                             if sub_id:
                                 subscription_link = f"{SUBSCRIPTION_URL}/sub/{SUBSCRIPTION_EXTRA_PATH}/{sub_id}"
-                                
+
                                 qr = qrcode.QRCode(
                                     version=1,
                                     error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -4889,22 +4889,22 @@ async def qr_code_old(update: Update, context: CallbackContext) -> None:
                                 )
                                 qr.add_data(subscription_link)
                                 qr.make(fit=True)
-                                
+
                                 img = qr.make_image(fill_color="black", back_color="white")
                                 bio = BytesIO()
                                 img.save(bio, 'PNG')
                                 bio.seek(0)
-                                
+
                                 return bio, subscription_link
             return None, None
         except Exception as e:
             logger.error(f"Ошибка генерации QR-кода: {e}")
             return None, None
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(generate_qr_code)
         qr_code_bio, subscription_link = future.result()
-    
+
     if qr_code_bio and subscription_link:
         message = "📱 <b>QR-код для подключения</b>\n\n"
         message += f"👤 <b>Логин:</b> <code>{client['login']}</code>\n\n"
@@ -4912,7 +4912,7 @@ async def qr_code_old(update: Update, context: CallbackContext) -> None:
         message += "• Нажмите 'Добавить по QR-коду'\n"
         message += "• Наведите камеру на код\n"
         message += "• Наслаждайтесь быстрым интернетом! 🚀"
-        
+
         await update.message.reply_photo(
             photo=qr_code_bio,
             caption=message,
@@ -4930,34 +4930,34 @@ async def vpn_status(update: Update, context: CallbackContext) -> None:
     """Проверяет статус VPN клиента"""
     user = update.effective_user
     client = db.get_client_by_telegram_id(user.id)
-    
+
     if not client:
         await update.message.reply_text("❌ <b>Вы не зарегистрированы</b>", parse_mode=HTML)
         return
-    
+
     await update.message.reply_text("🔄 <b>Проверяю подключение...</b>", parse_mode=HTML)
     await update.message.reply_sticker('CAACAgIAAxkBAAI1iGohmQAB-JJJJndUBI0R3sGYTBKZiQACoQwAAkI1CUsKh5IXMf-oETsE')
-    
+
     def check():
         from panel_manager import get_panels_list, set_active_panel, get_active_panel
         from xui_api import get_online_clients, get_client_ips
         import requests as req
         from datetime import datetime
-        
+
         panels = get_panels_list()
         original = get_active_panel()['id']
         results = []
-        
+
         for panel in panels:
             set_active_panel(panel['id'])
             online = get_online_clients()
-            
+
             # Проверяем все логины клиента + поиск по tgId
             is_online = False
             check_logins = [client['login']]
             if client.get('login2'):
                 check_logins.append(client['login2'])
-            
+
             # Ищем по tgId в настройках клиентов
             import json
             try:
@@ -4975,11 +4975,11 @@ async def vpn_status(update: Update, context: CallbackContext) -> None:
                                     check_logins.append(email)
             except:
                 pass
-            
+
             for login in check_logins:
                 if login in online:
                     is_online = True
-                    
+
                     # Получаем IP
                     ips = get_client_ips(login)
                     ip = str(ips[0]).split(' ')[0].strip() if ips else '?'
@@ -4990,7 +4990,7 @@ async def vpn_status(update: Update, context: CallbackContext) -> None:
                             if r.status_code == 200:
                                 isp = r.json().get('isp', '')
                         except: pass
-                    
+
                     results.append({
                         'panel': panel['name'],
                         'emoji': panel['emoji'],
@@ -5000,7 +5000,7 @@ async def vpn_status(update: Update, context: CallbackContext) -> None:
                         'isp': isp
                     })
                     break
-            
+
             if not is_online:
                 results.append({
                     'panel': panel['name'],
@@ -5008,16 +5008,16 @@ async def vpn_status(update: Update, context: CallbackContext) -> None:
                     'online': False,
                     'login': client['login']
                 })
-        
+
         set_active_panel(original)
         return results
-    
+
     with ThreadPoolExecutor() as executor:
         future = executor.submit(check)
         results = future.result()
-    
+
     online_count = sum(1 for r in results if r['online'])
-    
+
     if online_count > 0:
         message = "🛡️ <b>СТАТУС VPN</b>\n\n"
         for r in results:
@@ -5029,23 +5029,23 @@ async def vpn_status(update: Update, context: CallbackContext) -> None:
         message += "📱 Откройте приложение <b>v2rayTun</b>\n"
         message += "🔗 Импортируйте подписку из раздела <b>Ссылки</b>\n"
         message += "▶️ Нажмите <b>Подключить</b>"
-    
+
     await update.message.reply_text(message, parse_mode=HTML)
 
 async def app_info(update: Update, context: CallbackContext) -> None:
     """Информация о приложении с inline-кнопками"""
     user = update.effective_user
     client = db.get_client_by_telegram_id(user.id)
-    
+
     if not client:
         await update.message.reply_text("❌ <b>Вы не зарегистрированы</b>", parse_mode=HTML)
         return
-    
+
     keyboard = [
         [InlineKeyboardButton("🤖 Открыть в Google Play", url="https://play.google.com/store/apps/details?id=com.v2raytun.android")],
         [InlineKeyboardButton("🍎 Открыть в App Store", url="https://apps.apple.com/app/v2raytun/id6476628951")],
     ]
-    
+
     message = "📱 <b>v2rayTun</b>\n\n"
     message += "🏆 <b>Лучшее приложение для VPN</b>\n\n"
     message += "<b>Возможности:</b>\n"
@@ -5060,7 +5060,7 @@ async def app_info(update: Update, context: CallbackContext) -> None:
     message += "2️⃣ Или отсканируйте QR-код из раздела 📱 QR-Код\n"
     message += "3️⃣ Нажмите ▶️ для подключения\n\n"
     message += "👇 <b>Скачайте приложение:</b>"
-    
+
     await update.message.reply_text(
         message,
         reply_markup=InlineKeyboardMarkup(keyboard),
@@ -5071,21 +5071,21 @@ async def android_app(update: Update, context: CallbackContext) -> None:
     """Открывает ссылку на v2rayTun в Google Play"""
     user = update.effective_user
     client = db.get_client_by_telegram_id(user.id)
-    
+
     if not client:
         await update.message.reply_text("❌ <b>Вы не зарегистрированы в системе</b>", parse_mode=HTML)
         return
-    
+
     message = "🤖 <b>Приложение для Android</b>\n\n"
     message += "📱 <b>v2rayTun</b> - лучшее приложение для работы с VPN\n"
     message += "⭐ Рейтинг: 4.8\n"
     message += "📥 Размер: 15 MB\n"
     message += "🔒 Безопасно и надежно\n\n"
     message += "👇 <b>Нажмите на кнопку ниже, чтобы открыть Google Play:</b>"
-    
+
     from keyboards import create_app_links_keyboard
     await update.message.reply_text(
-        message, 
+        message,
         reply_markup=create_app_links_keyboard(),
         parse_mode=HTML
     )
@@ -5093,21 +5093,21 @@ async def iphone_app(update: Update, context: CallbackContext) -> None:
     """Открывает ссылку на v2rayTun в App Store"""
     user = update.effective_user
     client = db.get_client_by_telegram_id(user.id)
-    
+
     if not client:
         await update.message.reply_text("❌ <b>Вы не зарегистрированы в системе</b>", parse_mode=HTML)
         return
-    
+
     message = "🍎 <b>Приложение для iPhone</b>\n\n"
     message += "📱 <b>v2rayTun</b> - лучшее приложение для работы с VPN\n"
     message += "⭐ Рейтинг: 4.9\n"
     message += "📥 Размер: 25 MB\n"
     message += "🔒 Безопасно и надежно\n\n"
     message += "👇 <b>Нажмите на кнопку ниже, чтобы открыть App Store:</b>"
-    
+
     from keyboards import create_iphone_links_keyboard
     await update.message.reply_text(
-        message, 
+        message,
         reply_markup=create_iphone_links_keyboard(),
         parse_mode=HTML
     )
@@ -5116,18 +5116,18 @@ async def open_web_app(update: Update, context: CallbackContext) -> None:
     """Открывает веб-кабинет как Web App"""
     user = update.effective_user
     client = db.get_client_by_telegram_id(user.id)
-    
+
     if not client:
         await update.message.reply_text("❌ <b>Вы не зарегистрированы</b>", parse_mode=HTML)
         return
-    
+
     from telegram import WebAppInfo
-    
+
     keyboard = [[InlineKeyboardButton(
         "🏢 Открыть личный кабинет",
         web_app=WebAppInfo(url="http://144.31.133.182:8080")
     )]]
-    
+
     await update.message.reply_text(
         "🏢 <b>ЛИЧНЫЙ КАБИНЕТ</b>\n\n"
         "👤 Для входа используйте ваш номер телефона:\n"
@@ -5174,7 +5174,7 @@ async def button_callback(update: Update, context: CallbackContext) -> None:
     """Обрабатывает нажатия на inline-кнопки"""
     query = update.callback_query
     await query.answer()
-    
+
     if query.data == "back_to_menu":
         from keyboards import create_user_keyboard
         await query.edit_message_text(
@@ -5187,7 +5187,7 @@ async def button_callback(update: Update, context: CallbackContext) -> None:
 async def error_handler(update: Update, context: CallbackContext) -> None:
     """Обработчик ошибок"""
     logger.error(f"Ошибка при обработке сообщения: {context.error}")
-    
+
     if update and update.effective_message:
         try:
             await update.effective_message.reply_text(
@@ -5201,7 +5201,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     current_state = context.user_data.get('state', BotState.MAIN_MENU)
     message_text = update.message.text
-    
+
     # Проверяем ввод Telegram ID
     if context.user_data.get('waiting_for_server'):
         ip = update.message.text.strip()
@@ -5236,7 +5236,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         else:
             await update.message.reply_text("❌ <b>Неверный пароль!</b>", parse_mode=HTML)
         return
-    
+
     if context.user_data.get('awaiting_city'):
         selected_user = context.user_data.get('selected_user')
         if selected_user and update.message.text:
@@ -5256,7 +5256,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         context.user_data.pop('awaiting_city', None)
         context.user_data['state'] = BotState.USER_DETAIL_MENU
         return
-    
+
     if context.user_data.get('awaiting_hwid'):
         selected_user = context.user_data.get('selected_user')
         if selected_user and update.message.text:
@@ -5271,7 +5271,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         context.user_data.pop('awaiting_hwid', None)
         context.user_data['state'] = BotState.USER_DETAIL_MENU
         return
-    
+
     if context.user_data.get('awaiting_birthday'):
         # Сохраняем день рождения
         selected_user = context.user_data.get('selected_user')
@@ -5287,15 +5287,15 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         context.user_data.pop('awaiting_birthday', None)
         context.user_data['state'] = BotState.USER_DETAIL_MENU
         return
-    
+
     if context.user_data.get('client_writing'):
         await handle_client_message(update, context)
         return
-    
+
     if context.user_data.get('awaiting_tg_id'):
         await handle_tg_id_input(update, context)
         return
-    
+
     # Проверяем особые состояния
     if context.user_data.get('awaiting_delete_confirmation'):
         if message_text in ["✅ Подтвердить", "❌ Отменить"]:
@@ -5303,14 +5303,14 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
             return
         else:
             context.user_data.pop('awaiting_delete_confirmation', None)
-    
+
     logger.info(f"Получено сообщение: '{message_text}' от пользователя {user_id}, состояние: {current_state}")
-    
+
     # Обработка состояний админа по отправке сообщений
     if current_state == BotState.ADMIN_CHOOSE_USER:
         await admin_choose_user(update, context)
         return
-    
+
     if current_state == BotState.ADMIN_WRITE_MESSAGE:
         if update.message.photo:
             await admin_handle_media(update, context)
@@ -5319,8 +5319,8 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         elif update.message.voice:
             await admin_handle_media(update, context)
         elif update.message.audio:
-            await admin_handle_media(update, context)    
-        elif update.message.document:    
+            await admin_handle_media(update, context)
+        elif update.message.document:
             await admin_handle_media(update, context)
         elif update.message.text:
             await admin_handle_message(update, context)
@@ -5330,25 +5330,25 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
                 parse_mode=HTML
             )
         return
-    
+
     # Обработка состояний регистрации
     # Проверка - если админ добавляет пользователя
     if context.user_data.get('adding_user'):
         await handle_add_user_input(update, context)
         return
-    
+
     if current_state == BotState.REGISTRATION_LOGIN:
         await handle_registration_login(update, context)
         return
-    
+
     elif current_state == BotState.REGISTRATION_PHONE:
         await handle_registration_phone(update, context)
         return
-    
+
     elif current_state == BotState.REGISTRATION_NAME:
         await handle_registration_name(update, context)
         return
-    
+
     # Обработка состояний управления пользователями
     elif current_state == BotState.USERS_LIST_MENU:
         if message_text == "⬅️ Назад в меню":
@@ -5363,7 +5363,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         else:
             await user_detail(update, context)
         return
-    
+
     elif current_state == BotState.USER_DETAIL_MENU:
         if message_text == "✏️ Редактировать логин":
             await edit_user_login(update, context)
@@ -5386,7 +5386,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         else:
             await user_detail(update, context)
         return
-    
+
     # Обработка состояний редактирования пользователя
     elif current_state in [BotState.USER_EDIT_LOGIN, BotState.USER_EDIT_PHONE, BotState.USER_EDIT_NAME, BotState.USER_EDIT_CITY]:
         if message_text == "✅ Подтвердить":
@@ -5396,7 +5396,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         else:
             await handle_user_edit_input(update, context)
         return
-    
+
     elif current_state == BotState.USER_CONFIRM_DELETE:
         if message_text == "✅ Подтвердить":
             await confirm_user_delete(update, context)
@@ -5404,7 +5404,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
             await update.message.reply_text("❌ <b>Удаление отменено</b>", parse_mode=HTML)
             await user_detail(update, context)
         return
-    
+
     # Обработка состояний админского меню
     elif current_state == BotState.INBOUNDS_MENU:
         if message_text == "⬅️ Назад в меню":
@@ -5417,7 +5417,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         else:
             await inbound_detail(update, context)
         return
-    
+
     elif current_state == BotState.ALL_CLIENTS_MENU:
         if message_text == "⬅️ Назад в меню":
             context.user_data['state'] = BotState.MAIN_MENU
@@ -5443,7 +5443,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         else:
             await client_detail(update, context)
         return
-    
+
     elif current_state == BotState.CLIENT_DETAIL_MENU:
         if message_text == "🔄 Обновить клиента":
             await refresh_client_status(update, context)
@@ -5460,7 +5460,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         else:
             await client_detail(update, context)
         return
-    
+
     # Обработка главного меню
     elif current_state == BotState.GROUPS_MENU:
         if any(g["name"] in message_text for g in db.get_groups()):
@@ -5557,7 +5557,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
     elif current_state == BotState.MAIN_MENU:
         is_user_admin = is_admin(user_id)
         is_in_client_mode = context.user_data.get('is_admin_in_client_mode', False)
-        
+
         if is_user_admin and is_in_client_mode:
             if message_text == "💬 Написать админу":
                 await write_to_admin(update, context)
@@ -5568,7 +5568,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
             if message_text == "⚙️ Админ-панель":
                 await switch_to_admin_mode(update, context)
                 return
-            
+
             user_handlers = {
                 "📊 Мои данные": statistics,
                 "🔗 Ссылки": link,
@@ -5578,11 +5578,11 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
                 "🛡️ Статус VPN": vpn_status,
                 "🛡️ Статус VPN": vpn_status,
                 "🆔 Мой ID": get_telegram_id,
-                
+
                 "🤖 AI Помощник": ai_help,
                 "💬 Написать админу": write_to_admin,
             }
-            
+
             if message_text in user_handlers:
                 await user_handlers[message_text](update, context)
             else:
@@ -5592,19 +5592,19 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
                     parse_mode=HTML
                 )
             return
-        
+
         if is_user_admin:
             # Проверяем выбор панели
             if "Финляндия" in message_text or "Россия" in message_text:
                 await handle_panel_selection(update, context)
                 return
-            
+
             admin_handlers = {
                 "📊 Состояние сервера": server_status,
                 "💌 Отправить сообщение": send_message,
                 "📡 Инбаунды": inbounds,
                 "🛡️ Маршруты": routing_view,
-                "👥 Все клиенты": all_clients,                
+                "👥 Все клиенты": all_clients,
                 "👤 Пользователи": users_list,
                 "👥 Группы": groups_menu,
                 "🌐 Онлайн": online,
@@ -5613,7 +5613,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
                 "⚙️ Настройки": settings_menu,
                 "🔔 Уведомления": toggle_notifications_handler,
             }
-            
+
             if message_text in admin_handlers:
                 await admin_handlers[message_text](update, context)
             else:
@@ -5632,10 +5632,10 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
                 "🛡️ Статус VPN": vpn_status,
                 "🆔 Мой ID": get_telegram_id,
                 "🤖 AI Помощник": ai_help,
-                
+
                 "💬 Написать админу": write_to_admin,
             }
-            
+
             if message_text in user_handlers:
                 await user_handlers[message_text](update, context)
             else:
@@ -5644,11 +5644,11 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
                     reply_markup=create_user_keyboard(),
                     parse_mode=HTML
                 )
-    
+
     else:
         context.user_data.clear()
         context.user_data['state'] = BotState.MAIN_MENU
-        
+
         if is_admin(user_id):
             await update.message.reply_text(
                 "🏠 <b>Возврат в главное меню:</b>",
