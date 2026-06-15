@@ -909,7 +909,7 @@ async def server_speed_test(update: Update, context: CallbackContext) -> None:
     """Проверка скорости сервера через Speedtest CLI"""
     if not is_admin(update.effective_user.id):
         return
-    await update.message.reply_text("🚀 <b>Запускаю Speedtest...</b>\n⏳ Подождите ~30 секунд", parse_mode='HTML')
+    await update.message.reply_text("🚀 <b>Запускаю Speedtest...</b>\n⏳ Подождите ~20 секунд", parse_mode='HTML')
 
     import subprocess
     try:
