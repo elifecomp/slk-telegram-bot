@@ -1966,22 +1966,25 @@ async def all_clients(update: Update, context: CallbackContext) -> None:
     if not inbounds:
         await update.message.reply_text("❌ <b>Нет инбаундов</b>", parse_mode=HTML)
         return
-    
     keyboard = []
+    row = []
     for inbound in inbounds:
         clients_count = len(inbound.get('clientStats', []))
         remark = inbound.get('remark', '?').strip()
-        keyboard.append([InlineKeyboardButton(
+        row.append(InlineKeyboardButton(
             f"{remark} ({clients_count} клиентов)",
             callback_data=f"inbound_select_{inbound['id']}"
-        )])
-    
+        ))
+        if len(row) == 2:
+            keyboard.append(row)
+            row = []
+    if row:
+        keyboard.append(row)
     await update.message.reply_text(
         "📡 <b>ВЫБОР ИНБАУНДА</b>",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode=HTML
     )
-
 async def handle_inbound_select(update: Update, context: CallbackContext) -> None:
     """Показывает клиентов инбаунда inline-кнопками"""
     query = update.callback_query
@@ -2051,15 +2054,20 @@ async def handle_client_button(update: Update, context: CallbackContext) -> None
         with ThreadPoolExecutor() as executor:
             future = executor.submit(get_data)
             inbounds = future.result()
-        
         keyboard = []
+        row = []
         for inbound in inbounds:
             clients_count = len(inbound.get('clientStats', []))
             remark = inbound.get('remark', '?').strip()
-            keyboard.append([InlineKeyboardButton(
+            row.append(InlineKeyboardButton(
                 f"{remark} ({clients_count} клиентов)",
                 callback_data=f"inbound_select_{inbound['id']}"
-            )])
+            ))
+            if len(row) == 2:
+                keyboard.append(row)
+                row = []
+        if row:
+            keyboard.append(row)
         
         await query.edit_message_text(
             "📡 <b>ВЫБОР ИНБАУНДА</b>",
