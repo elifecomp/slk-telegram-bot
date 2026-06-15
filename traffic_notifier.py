@@ -57,7 +57,7 @@ async def traffic_monitor(app):
                 used = up + down
                 used_gb = used / (1024**3)
                 total_gb = total_bytes / (1024**3)
-                percent = (used_gb / total_gb) * 100 if total_gb > 0 else 0
+                percent = min((used_gb / total_gb) * 100, 100) if total_gb > 0 else 0
                 
                 if percent >= THRESHOLD_PERCENT and email not in notified:
                     alerts.append({
@@ -65,7 +65,7 @@ async def traffic_monitor(app):
                         'used': used_gb,
                         'total': total_gb,
                         'percent': percent,
-                        'remaining': total_gb - used_gb
+                        'remaining': max(total_gb - used_gb, 0)
                     })
                     new_notified.add(email)
             
