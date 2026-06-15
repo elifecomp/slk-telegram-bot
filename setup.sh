@@ -92,6 +92,13 @@ install_bot() {
     fi
     
     apt update -qq && apt install -y python3 python3-pip python3-venv git curl 2>/dev/null
+    
+    # Проверяем speedtest-cli
+    if ! command -v speedtest-cli &>/dev/null; then
+        echo -e "${CYAN}📡 Устанавливаю speedtest-cli...${NC}"
+        apt install -y speedtest-cli 2>/dev/null || pip install speedtest-cli 2>/dev/null
+        echo -e "${GREEN}✅ speedtest-cli установлен${NC}"
+    fi
     cd /tmp
     if [ -d "/opt/SLV_Bot" ]; then
         echo -e "${YELLOW}⚠️ Бот уже установлен!${NC}"
@@ -148,6 +155,14 @@ update_bot() {
     cd /opt/SLV_Bot
     git fetch --all
     git reset --hard origin/main
+    
+    # Проверяем speedtest-cli
+    if ! command -v speedtest-cli &>/dev/null; then
+        echo -e "${CYAN}📡 Устанавливаю speedtest-cli...${NC}"
+        apt install -y speedtest-cli 2>/dev/null || pip install speedtest-cli 2>/dev/null
+        echo -e "${GREEN}✅ speedtest-cli установлен${NC}"
+    fi
+    
     source venv/bin/activate
     pip install -r requirements.txt -q
     systemctl restart SLV-bot
