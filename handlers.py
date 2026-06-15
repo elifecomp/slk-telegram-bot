@@ -948,10 +948,7 @@ async def server_speed_test(update: Update, context: CallbackContext) -> None:
             msg += f"📡 Пинг: <b>{ping} ms</b>\n"
             msg += f"📥 Загрузка: <b>{dl_speed} Mbps</b>\n"
             msg += f"📤 Отдача: <b>{ul_speed} Mbps</b>\n"
-            if isp:
-                msg += f"🖥 Провайдер: <b>{isp}</b>\n"
-            if server:
-                msg += f"📍 Сервер: <b>{server}</b>\n"
+
             msg += "\n"
 
             try:
