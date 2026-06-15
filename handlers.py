@@ -906,59 +906,52 @@ async def panel_switch_old(update: Update, context: CallbackContext) -> None:
 
 
 async def server_speed_test(update: Update, context: CallbackContext) -> None:
-    """Проверка скорости сервера (загрузка + отдача)"""
+    """Проверка скорости сервера через Speedtest CLI"""
     if not is_admin(update.effective_user.id):
         return
-    await update.message.reply_text("🚀 <b>Запускаю тест скорости...</b>\n⏳ Подождите ~20 секунд", parse_mode='HTML')
+    await update.message.reply_text("🚀 <b>Запускаю Speedtest...</b>\n⏳ Подождите ~30 секунд", parse_mode='HTML')
     
-    import subprocess, re, os
+    import subprocess
     try:
-        # Тест загрузки
-        dl = subprocess.run(
-            "curl -o /dev/null -s -w '%{speed_download}' http://speedtest.tele2.net/50MB.zip",
+        result = subprocess.run(
+            "speedtest-cli --simple --secure 2>/dev/null || speedtest-cli --simple",
             shell=True, capture_output=True, text=True, timeout=60
         )
-        dl_speed = int(dl.stdout.strip()) if dl.stdout.strip().isdigit() else 0
+        output = result.stdout
         
-        # Тест отдачи
-        # Создаём файл 5MB для отправки
-        os.system("dd if=/dev/urandom of=/tmp/speedtest.bin bs=1M count=5 2>/dev/null")
-        ul = subprocess.run(
-            "curl -o /dev/null -s -w '%{speed_upload}' -T /tmp/speedtest.bin 'https://yandex.ru/internet/upload?rnd='$(date +%s)",
-            shell=True, capture_output=True, text=True, timeout=30
-        )
-        ul_speed = int(ul.stdout.strip()) if ul.stdout.strip().isdigit() else 0
-        os.system("rm -f /tmp/speedtest.bin")
-        
-        if dl_speed > 0:
-            dl_mbps = dl_speed * 8 / 1000000
-            dl_mbs = dl_speed / 1000000
-            ul_mbps = ul_speed * 8 / 1000000
-            ul_mbs = ul_speed / 1000000
+        if output:
+            ping_match = re.search(r'Ping:\s+([\d.]+)', output)
+            dl_match = re.search(r'Download:\s+([\d.]+)', output)
+            ul_match = re.search(r'Upload:\s+([\d.]+)', output)
             
-            # Оценка скорости
-            avg_mbps = (dl_mbps + ul_mbps) / 2
-            if avg_mbps > 80:
-                emoji = "🟢"
-                comment = "Отличная скорость!"
-            elif avg_mbps > 30:
-                emoji = "🟡"
-                comment = "Хорошая скорость"
-            else:
-                emoji = "🔴"
-                comment = "Низкая скорость"
+            ping = ping_match.group(1) if ping_match else "?"
+            dl_speed = dl_match.group(1) if dl_match else "?"
+            ul_speed = ul_match.group(1) if ul_match else "?"
             
-            msg = f"🚀 <b>СКОРОСТЬ СЕРВЕРА</b>\n\n"
-            msg += f"📥 Загрузка: <b>{dl_mbps:.1f} Mbps</b> ({dl_mbs:.1f} MB/s)\n"
-            msg += f"📤 Отдача: <b>{ul_mbps:.1f} Mbps</b> ({ul_mbs:.1f} MB/s)\n\n"
-            msg += f"{emoji} {comment}"
+            msg = f"🚀 <b>SPEEDTEST СЕРВЕРА</b>\n\n"
+            msg += f"📡 Пинг: <b>{ping} ms</b>\n"
+            msg += f"📥 Загрузка: <b>{dl_speed} Mbps</b>\n"
+            msg += f"📤 Отдача: <b>{ul_speed} Mbps</b>\n\n"
+            
+            try:
+                dl_val = float(dl_speed) if dl_speed != "?" else 0
+                ul_val = float(ul_speed) if ul_speed != "?" else 0
+                avg = (dl_val + ul_val) / 2
+                if avg > 80:
+                    emoji, comment = "🟢", "Отличная скорость!"
+                elif avg > 30:
+                    emoji, comment = "🟡", "Хорошая скорость"
+                else:
+                    emoji, comment = "🔴", "Низкая скорость"
+                msg += f"{emoji} {comment}"
+            except:
+                pass
         else:
             msg = "❌ Не удалось измерить скорость"
     except Exception as e:
         msg = f"❌ Ошибка: {e}"
     
     await update.message.reply_text(msg, parse_mode='HTML')
-
 async def settings_menu(update: Update, context: CallbackContext) -> None:
     """Меню настроек бота"""
     if not is_admin(update.effective_user.id):
