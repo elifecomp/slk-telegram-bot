@@ -948,7 +948,10 @@ async def server_speed_test(update: Update, context: CallbackContext) -> None:
             msg += f"📡 Пинг: <b>{ping} ms</b>\n"
             msg += f"📥 Загрузка: <b>{dl_speed} Mbps</b>\n"
             msg += f"📤 Отдача: <b>{ul_speed} Mbps</b>\n"
-
+            if isp:
+                msg += f"🖥 Провайдер: <b>{isp}</b>\n"
+            if server:
+                msg += f"📍 Сервер: <b>{server}</b>\n"
             msg += "\n"
 
             try:
@@ -1248,13 +1251,13 @@ def save_servers(servers):
         for ip in servers:
             f.write(ip + '\n')
 
-def ping_server(ip, port=443):
+def ping_server(ip, port=22):
     """Проверяет доступность сервера через TCP (fallback на ICMP)"""
     import subprocess, socket
     # Сначала пробуем TCP
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(0.5)
+        sock.settimeout(2)
         start = __import__('time').time()
         result = sock.connect_ex((ip, port))
         elapsed = (__import__('time').time() - start) * 1000
@@ -5334,6 +5337,30 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         await handle_add_user_input(update, context)
         return
 
+    if context.user_data.get("creating_group"):
+        group_name = update.message.text.strip()
+        context.user_data.pop("creating_group", None)
+        db.create_group(group_name)
+        await update.message.reply_text(
+            "✅ <b>Группа " + group_name + " создана!</b>",
+            reply_markup=create_admin_keyboard(),
+            parse_mode="HTML"
+        )
+        context.user_data["state"] = BotState.MAIN_MENU
+        return
+    
+    if context.user_data.get("deleting_group"):
+        group_name = update.message.text.strip()
+        context.user_data.pop("deleting_group", None)
+        db.delete_group(group_name)
+        await update.message.reply_text(
+            "✅ <b>Группа " + group_name + " удалена!</b>",
+            reply_markup=create_admin_keyboard(),
+            parse_mode="HTML"
+        )
+        context.user_data["state"] = BotState.MAIN_MENU
+        return
+    
     if current_state == BotState.REGISTRATION_LOGIN:
         await handle_registration_login(update, context)
         return
@@ -5460,14 +5487,27 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
 
     # Обработка главного меню
     elif current_state == BotState.GROUPS_MENU:
+        if message_text == "➕ Создать группу":
+            context.user_data["creating_group"] = True
+            await update.message.reply_text("📝 Введите название новой группы:", parse_mode="HTML")
+            return
+        if message_text == "🗑 Удалить группу":
+            groups = db.get_groups()
+            if not groups:
+                await update.message.reply_text("❌ Нет групп для удаления", parse_mode="HTML")
+                return
+            context.user_data["deleting_group"] = True
+            msg = "🗑 <b>ВЫБЕРИТЕ ГРУППУ ДЛЯ УДАЛЕНИЯ</b>\n\n"
+            for g in groups:
+                msg += f"• {g['name']}\n"
+            msg += "\n📝 Введите название группы:"
+            await update.message.reply_text(msg, parse_mode="HTML")
+            return
         if any(g["name"] in message_text for g in db.get_groups()):
             await group_detail(update, context)
-        elif "➕" in message_text:
-            # Создание группы — упрощённо
-            await update.message.reply_text("Введите название группы:", parse_mode=HTML)
         elif "⬅️" in message_text:
             context.user_data['state'] = BotState.MAIN_MENU
-            await update.message.reply_text("🏠 Главное меню", reply_markup=create_admin_keyboard(), parse_mode=HTML)
+            await update.message.reply_text("🏠 Главное меню", reply_markup=create_admin_keyboard(), parse_mode="HTML")
         return
 
     elif current_state == BotState.GROUP_DETAIL_MENU:

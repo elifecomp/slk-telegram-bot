@@ -328,6 +328,28 @@ class Database:
         except:
             return False
 
+    def create_group(self, group_name):
+        """Создание новой группы"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.execute("INSERT INTO client_groups (name) VALUES (?)", (group_name,))
+            conn.commit()
+            conn.close()
+            return True
+        except:
+            return False
+
+    def delete_group(self, group_name):
+        """Удаление группы по имени"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.execute("DELETE FROM client_groups WHERE name LIKE ?", ("%" + group_name + "%",))
+            conn.commit()
+            conn.close()
+            return True
+        except:
+            return False
+
     def get_clients_in_group(self, group_id):
         try:
             conn = sqlite3.connect(self.db_path)

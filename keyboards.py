@@ -81,6 +81,7 @@ def create_inbounds_keyboard(inbounds_list):
             row = [remark]
     if row:
         keyboard.append(row)
+    keyboard.append(["➕ Создать группу", "🗑 Удалить группу"])
     keyboard.append(["⬅️ Назад в меню"])
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
@@ -119,6 +120,7 @@ def create_users_list_keyboard(users):
     if row:
         keyboard.append(row)
     keyboard.append(["➕ Добавить пользователя"])
+    keyboard.append(["➕ Создать группу", "🗑 Удалить группу"])
     keyboard.append(["⬅️ Назад в меню"])
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
@@ -146,6 +148,7 @@ def create_panel_switch_keyboard():
         name = panel['name']
         active = " ✅" if panel['id'] == _active_panel_id else ""
         keyboard.append([f"{panel['emoji']} {name}{active}"])
+    keyboard.append(["➕ Создать группу", "🗑 Удалить группу"])
     keyboard.append(["⬅️ Назад в меню"])
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
@@ -168,6 +171,7 @@ def create_groups_keyboard(groups):
     for g in groups:
         count = len(db.get_clients_in_group(g['id']))
         keyboard.append([f"📁 {g['name']} ({count})"])
+    keyboard.append(["➕ Создать группу", "🗑 Удалить группу"])
     keyboard.append(["⬅️ Назад в меню"])
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
