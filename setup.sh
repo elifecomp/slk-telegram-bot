@@ -51,29 +51,29 @@ show_menu() {
 
 install_bot() {
     echo -e "${GREEN}🚀 Установка SLK бота...${NC}"
-    
+
     # Проверка разрешения на установку
     echo -e "${CYAN}🔐 Проверка доступа...${NC}"
     read -p "Ваш Telegram ID: " TG_ID
     read -p "Ваше имя пользователя: " TG_USER
-    
+
     if [ -z "$TG_ID" ]; then
         echo -e "${RED}❌ Telegram ID обязателен!${NC}"
         return
     fi
-    
+
     MY_IP=$(curl -s ifconfig.me 2>/dev/null || echo "unknown")
     echo -e "${CYAN}📤 Отправляю запрос администратору...${NC}"
-    
+
     REQ_ID=$(curl -s "http://31.76.40.27:5555/install-request?tg_id=${TG_ID}&user=${TG_USER}&ip=${MY_IP}")
-    
+
     if [ -z "$REQ_ID" ]; then
         echo -e "${RED}❌ Сервер авторизации недоступен!${NC}"
         return
     fi
-    
+
     echo -e "${YELLOW}⏳ Ожидайте подтверждения (ID: ${REQ_ID})...${NC}"
-    
+
     for i in $(seq 1 60); do
         STATUS=$(curl -s "http://31.76.40.27:5555/install-check?id=${REQ_ID}")
         if [ "$STATUS" = "approved" ]; then
@@ -85,14 +85,14 @@ install_bot() {
         fi
         sleep 5
     done
-    
+
     if [ "$STATUS" != "approved" ]; then
         echo -e "${RED}⏰ Время ожидания истекло!${NC}"
         return
     fi
-    
+
     apt update -qq && apt install -y python3 python3-pip python3-venv git curl 2>/dev/null
-    
+
     # Проверяем speedtest-cli
     if ! command -v speedtest-cli &>/dev/null; then
         echo -e "${CYAN}📡 Устанавливаю speedtest-cli...${NC}"
@@ -142,7 +142,7 @@ SVCEOF
     systemctl daemon-reload
     systemctl enable SLV-bot
     systemctl start SLV-bot
-    
+
     # Добавляем автоперезагрузку в 05:00 и 17:00
     (crontab -l 2>/dev/null | grep -v "SLV-bot"; echo "0 5,17 * * * systemctl restart SLV-bot 2>/dev/null") | crontab -
     echo -e "${GREEN}✅ Бот установлен!${NC}"
@@ -155,14 +155,14 @@ update_bot() {
     cd /opt/SLV_Bot
     git fetch --all
     git reset --hard origin/main
-    
+
     # Проверяем speedtest-cli
     if ! command -v speedtest-cli &>/dev/null; then
         echo -e "${CYAN}📡 Устанавливаю speedtest-cli...${NC}"
         apt install -y speedtest-cli 2>/dev/null || pip install speedtest-cli 2>/dev/null
         echo -e "${GREEN}✅ speedtest-cli установлен${NC}"
     fi
-    
+
     source venv/bin/activate
     pip install -r requirements.txt -q
     systemctl restart SLV-bot
@@ -196,7 +196,7 @@ while true; do
         10) read -p "URL панели 2: " val; set_env "XUI2_PANEL_URL" "$val"; set_env "XUI2_VERIFY_SSL" "False"; systemctl restart SLV-bot 2>/dev/null; echo -e "${GREEN}✅ Готово!${NC}"; read -p "Enter..." ;;        11) bash <(curl -Ls https://raw.githubusercontent.com/MHSanaei/3x-ui/master/install.sh) ;;
         12) systemctl stop x-ui 2>/dev/null; systemctl disable x-ui 2>/dev/null; rm -rf /usr/local/x-ui; rm -f /etc/systemd/system/x-ui.service; systemctl daemon-reload; echo -e "${GREEN}✅ Панель удалена!${NC}"; read -p "Enter..." ;;
         13) curl -s -o /opt/SLV_Bot/setup.sh https://raw.githubusercontent.com/elifecomp/slk-telegram-bot/main/setup.sh && chmod +x /opt/SLV_Bot/setup.sh && echo -e "${GREEN}✅ Меню обновлено!${NC}"; read -p "Enter..." ;;
-        14) 
+        14)
             TOKEN=$(curl -s http://144.31.133.182:9999/token 2>/dev/null)
             if [ -n "$TOKEN" ]; then
                 set_env "GITHUB_TOKEN" "$TOKEN"

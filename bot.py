@@ -34,12 +34,12 @@ async def cache_stats(update: Update, context) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     try:
         from xui_api import get_traffic_cache_stats
-        
+
         stats = get_traffic_cache_stats()
-        
+
         if isinstance(stats, dict) and 'error' not in stats:
             message = "📊 <b>Статистика кэша трафика</b>\n\n"
             message += f"📦 <b>Размер:</b> {stats['size']}/{stats['max_size']} ({stats['usage_percent']:.1f}%)\n"
@@ -49,7 +49,7 @@ async def cache_stats(update: Update, context) -> None:
             message += f"🎯 <b>Hit rate:</b> {stats['stats']['hit_rate']:.1f}%\n"
             message += f"🧹 <b>Очисток по размеру:</b> {stats['stats']['evictions']}\n"
             message += f"🧹 <b>Очисток по возрасту:</b> {stats['stats']['age_cleanups']}\n"
-            
+
             await update.message.reply_text(message, parse_mode=HTML)
         else:
             await update.message.reply_text("❌ <b>Статистика кэша недоступна</b>", parse_mode=HTML)
@@ -62,16 +62,16 @@ async def clear_cache(update: Update, context) -> None:
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ <b>У вас нет доступа к этой команде</b>", parse_mode=HTML)
         return
-    
+
     try:
         from traffic_cache import client_traffic_history
-        
+
         # Получаем размер до очистки
         size_before = len(client_traffic_history)
-        
+
         # Очищаем кэш
         client_traffic_history.clear()
-        
+
         await update.message.reply_text(
             f"✅ <b>Кэш успешно очищен</b>\n\n"
             f"Удалено записей: {size_before}",
@@ -85,7 +85,7 @@ async def clear_cache(update: Update, context) -> None:
 def main() -> None:
     # Проверяем наличие аудиофайла при запуске
     check_audio_file()
-    
+
     # Выводим информацию о SSL настройках
     print("\n" + "="*50)
     print("🔐 НАСТРОЙКИ БЕЗОПАСНОСТИ")
@@ -98,7 +98,7 @@ def main() -> None:
         print("   Режим для самоподписанных сертификатов или IP-адресов")
         print("   Для продакшена рекомендуется включить проверку")
     print("="*50 + "\n")
-    
+
     # Создаем приложение
     application = Application.builder().token(BOT_TOKEN).build()
 
@@ -111,7 +111,7 @@ def main() -> None:
     application.add_handler(CommandHandler("clearcache", clear_cache))
     application.add_handler(CommandHandler("admin", admin_panel_command))    # НОВАЯ КОМАНДА
     application.add_handler(CommandHandler("client", client_mode_command))   # НОВАЯ КОМАНДА
-    
+
     # Добавляем обработчик callback-запросов (для inline-кнопок)
     application.add_handler(CallbackQueryHandler(show_direct_keys_handler, pattern="^show_direct_keys$"))
     application.add_handler(CallbackQueryHandler(ai_exit_handler, pattern="^ai_exit$"))
@@ -122,18 +122,18 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(handle_client_button, pattern="^client_btn_"))
     application.add_handler(CallbackQueryHandler(handle_online_refresh, pattern="^online_refresh$"))
     application.add_handler(CallbackQueryHandler(handle_qr_callback, pattern="^qr_"))
-        
+
     application.add_handler(CallbackQueryHandler(handle_panel_switch, pattern="^panel_switch_"))
     application.add_handler(CallbackQueryHandler(handle_backup_delete, pattern="^backup_delete_"))
     application.add_handler(CallbackQueryHandler(button_callback))
-    
+
     # Добавляем обработчики для всех типов медиа
     application.add_handler(MessageHandler(filters.PHOTO, handle_message))
     application.add_handler(MessageHandler(filters.VIDEO, handle_message))
     application.add_handler(MessageHandler(filters.VOICE, handle_message))
     application.add_handler(MessageHandler(filters.AUDIO, handle_message))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_message))
-    
+
     # Общий обработчик текстовых сообщений
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
@@ -142,7 +142,7 @@ def main() -> None:
 
     # Запускаем бота
     logger.info(f"🤖 Бот запущен — {BOT_NAME}")
-    
+
     import asyncio
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -151,7 +151,7 @@ def main() -> None:
     loop.run_until_complete(init_update_checker(application))
     loop.run_until_complete(init_greeter(application))
     loop.run_until_complete(init_birthday_greeter(application))
-    
+
     # Запускаем фоновую проверку обновлений
     loop.create_task(traffic_monitor(application))
         # Запускаем бэкап панели раз в сутки
@@ -166,7 +166,7 @@ def main() -> None:
             await asyncio.sleep(30)
     loop.create_task(panel_backup_task())
     loop.create_task(check_bot_updates())
-    
+
     # Проверяем обновления сразу при старте
     async def startup_update_check():
         await asyncio.sleep(5)
@@ -196,7 +196,7 @@ def main() -> None:
                         except: pass
         except: pass
     loop.create_task(startup_update_check())
-    
+
     application.run_polling()
 
 def check_audio_file():
@@ -209,14 +209,14 @@ def check_audio_file():
         os.path.join(os.getcwd(), 'welcome.mp3'),
         '/root/vpn_bot/welcome.mp3',
     ]
-    
+
     found = False
     for path in possible_paths:
         if path and os.path.exists(path):
             logger.info(f"✅ Приветственный аудиофайл найден: {path}")
             found = True
             break
-    
+
     if not found:
         logger.warning(f"❌ Приветственный аудиофайл не найден! Искали в: {possible_paths}")
         logger.warning("📢 Поместите файл welcome.mp3 в папку с ботом")
