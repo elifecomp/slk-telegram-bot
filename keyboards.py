@@ -81,7 +81,6 @@ def create_inbounds_keyboard(inbounds_list):
             row = [remark]
     if row:
         keyboard.append(row)
-    keyboard.append(["➕ Создать группу", "🗑 Удалить группу"])
     keyboard.append(["⬅️ Назад в меню"])
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
