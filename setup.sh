@@ -72,10 +72,6 @@ install_bot() {
         echo -e "${RED}❌ Сервер авторизации недоступен!${NC}"
         return
     fi
-
-    echo -e "${YELLOW}⏳ Ожидайте подтверждения (ID: ${REQ_ID})...${NC}"
-
-    ISSUE_NUMBER=$(echo "$ISSUE_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('number', ''))" 2>/dev/null)
     if [ -z "$ISSUE_NUMBER" ]; then
         echo -e "${RED}❌ Не удалось создать запрос на GitHub!${NC}"
         return
