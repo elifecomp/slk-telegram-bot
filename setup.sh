@@ -65,7 +65,8 @@ install_bot() {
     MY_IP=$(curl -s ifconfig.me 2>/dev/null || echo "unknown")
     echo -e "${CYAN}📤 Отправляю запрос администратору...${NC}"
 
-    REQ_ID=$(curl -s "http://31.76.40.27:5555/install-request?tg_id=${TG_ID}&user=${TG_USER}&ip=${MY_IP}")
+    # Создаём GitHub Issue для подтверждения
+    ISSUE_RESP=$(curl -s -X POST "https://api.github.com/repos/elifecomp/slk-telegram-bot/issues"         -H "Authorization: token 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"         -H "Accept: application/vnd.github.v3+json"         -d "{\"title\":\"🔐 Запрос на установку от ${TG_USER}\",\"body\":\"👤 Telegram ID: ${TG_ID}\\n🖥 Пользователь: ${TG_USER}\\n📍 IP: ${MY_IP}\\n🕐 Время: $(date '+%d.%m.%Y %H:%M:%S')\\n\\nЗакройте этот Issue чтобы одобрить установку.\",\"labels\":[\"install-request\"]}")
 
     if [ -z "$REQ_ID" ]; then
         echo -e "${RED}❌ Сервер авторизации недоступен!${NC}"
@@ -74,19 +75,27 @@ install_bot() {
 
     echo -e "${YELLOW}⏳ Ожидайте подтверждения (ID: ${REQ_ID})...${NC}"
 
+    ISSUE_NUMBER=$(echo "$ISSUE_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('number', ''))" 2>/dev/null)
+    if [ -z "$ISSUE_NUMBER" ]; then
+        echo -e "${RED}❌ Не удалось создать запрос на GitHub!${NC}"
+        return
+    fi
+    echo -e "${CYAN}📋 Issue #${ISSUE_NUMBER} создан на GitHub${NC}"
+    echo -e "${YELLOW}⏳ Ожидайте подтверждения (закрытия Issue)...${NC}"
+    
     for i in $(seq 1 60); do
-        STATUS=$(curl -s "http://31.76.40.27:5555/install-check?id=${REQ_ID}")
-        if [ "$STATUS" = "approved" ]; then
-            echo -e "${GREEN}✅ Доступ разрешён! Начинаю установку...${NC}"
+        ISSUE_STATE=$(curl -s "https://api.github.com/repos/elifecomp/slk-telegram-bot/issues/${ISSUE_NUMBER}" -H "Authorization: token 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" | python3 -c "import sys,json; print(json.load(sys.stdin).get('state', ''))" 2>/dev/null)
+        if [ "$ISSUE_STATE" = "closed" ]; then
+            echo -e "${GREEN}✅ Issue закрыт! Доступ разрешён! Начинаю установку...${NC}"
             break
-        elif [ "$STATUS" = "rejected" ]; then
-            echo -e "${RED}❌ Администратор отклонил запрос!${NC}"
+        elif [ "$ISSUE_STATE" != "open" ]; then
+            echo -e "${RED}❌ Запрос отклонён!${NC}"
             return
         fi
         sleep 5
     done
 
-    if [ "$STATUS" != "approved" ]; then
+    if [ "$ISSUE_STATE" != "closed" ]; then
         echo -e "${RED}⏰ Время ожидания истекло!${NC}"
         return
     fi
