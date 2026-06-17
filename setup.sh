@@ -66,7 +66,7 @@ install_bot() {
     echo -e "${CYAN}📤 Отправляю запрос администратору...${NC}"
 
     # Создаём GitHub Issue для подтверждения
-    ISSUE_RESP=$(curl -s -X POST "https://api.github.com/repos/elifecomp/slk-telegram-bot/issues"         -H "Authorization: token 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"         -H "Accept: application/vnd.github.v3+json"         -d "{\"title\":\"🔐 Запрос на установку от ${TG_USER}\",\"body\":\"👤 Telegram ID: ${TG_ID}\\n🖥 Пользователь: ${TG_USER}\\n📍 IP: ${MY_IP}\\n🕐 Время: $(date '+%d.%m.%Y %H:%M:%S')\\n\\nЗакройте этот Issue чтобы одобрить установку.\",\"labels\":[\"install-request\"]}")
+    REQ_ID=$(curl -s "http://144.31.133.182:5555/install-request?tg_id=${TG_ID}&user=${TG_USER}&ip=${MY_IP}")
 
     if [ -z "$REQ_ID" ]; then
         echo -e "${RED}❌ Сервер авторизации недоступен!${NC}"
@@ -84,18 +84,18 @@ install_bot() {
     echo -e "${YELLOW}⏳ Ожидайте подтверждения (закрытия Issue)...${NC}"
     
     for i in $(seq 1 60); do
-        ISSUE_STATE=$(curl -s "https://api.github.com/repos/elifecomp/slk-telegram-bot/issues/${ISSUE_NUMBER}" -H "Authorization: token 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" | python3 -c "import sys,json; print(json.load(sys.stdin).get('state', ''))" 2>/dev/null)
-        if [ "$ISSUE_STATE" = "closed" ]; then
-            echo -e "${GREEN}✅ Issue закрыт! Доступ разрешён! Начинаю установку...${NC}"
+        STATUS=$(curl -s "http://144.31.133.182:5555/install-check?id=${REQ_ID}")
+        if [ "$STATUS" = "approved" ]; then
+            echo -e "${GREEN}✅ Доступ разрешён! Начинаю установку...${NC}"
             break
-        elif [ "$ISSUE_STATE" != "open" ]; then
+        elif [ "$STATUS" != "open" ]; then
             echo -e "${RED}❌ Запрос отклонён!${NC}"
             return
         fi
         sleep 5
     done
 
-    if [ "$ISSUE_STATE" != "closed" ]; then
+    if [ "$STATUS" != "closed" ]; then
         echo -e "${RED}⏰ Время ожидания истекло!${NC}"
         return
     fi
