@@ -99,6 +99,20 @@ install_bot() {
         apt install -y speedtest-cli 2>/dev/null || pip install speedtest-cli 2>/dev/null
         echo -e "${GREEN}✅ speedtest-cli установлен${NC}"
     fi
+    
+    # Проверяем sqlite3
+    if ! command -v sqlite3 &>/dev/null; then
+        echo -e "${CYAN}🗄 Устанавливаю sqlite3...${NC}"
+        apt install -y sqlite3 2>/dev/null
+        echo -e "${GREEN}✅ sqlite3 установлен${NC}"
+    fi
+    
+    # Проверяем sqlite3
+    if ! command -v sqlite3 &>/dev/null; then
+        echo -e "${CYAN}🗄 Устанавливаю sqlite3...${NC}"
+        apt install -y sqlite3 2>/dev/null
+        echo -e "${GREEN}✅ sqlite3 установлен${NC}"
+    fi
     cd /tmp
     if [ -d "/opt/SLV_Bot" ]; then
         echo -e "${YELLOW}⚠️ Бот уже установлен!${NC}"
@@ -161,6 +175,20 @@ update_bot() {
         echo -e "${CYAN}📡 Устанавливаю speedtest-cli...${NC}"
         apt install -y speedtest-cli 2>/dev/null || pip install speedtest-cli 2>/dev/null
         echo -e "${GREEN}✅ speedtest-cli установлен${NC}"
+    fi
+    
+    # Проверяем sqlite3
+    if ! command -v sqlite3 &>/dev/null; then
+        echo -e "${CYAN}🗄 Устанавливаю sqlite3...${NC}"
+        apt install -y sqlite3 2>/dev/null
+        echo -e "${GREEN}✅ sqlite3 установлен${NC}"
+    fi
+    
+    # Проверяем sqlite3
+    if ! command -v sqlite3 &>/dev/null; then
+        echo -e "${CYAN}🗄 Устанавливаю sqlite3...${NC}"
+        apt install -y sqlite3 2>/dev/null
+        echo -e "${GREEN}✅ sqlite3 установлен${NC}"
     fi
 
     source venv/bin/activate
