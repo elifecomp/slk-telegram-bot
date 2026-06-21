@@ -85,6 +85,14 @@ async def handle_group_message(update: Update, context: CallbackContext) -> None
             sent += 1
         except:
             pass
+    
+    # Отправляем уведомление в приложение
+    try:
+        import requests
+        requests.post("http://144.31.133.182:8000/api/notify", 
+            json={"text": message_text, "group": group['name']}, timeout=5)
+    except:
+        pass
 
     await update.message.reply_text(
         f"✅ <b>Рассылка завершена!</b>\n\n"

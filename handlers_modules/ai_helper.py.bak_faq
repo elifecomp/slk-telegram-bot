@@ -1,0 +1,122 @@
+"""AI помощник — заготовленные ответы"""
+from concurrent.futures import ThreadPoolExecutor
+from telegram import Update
+from telegram.ext import CallbackContext
+from config import ADMIN_IDS
+from database import db
+from handlers_modules.common import is_admin
+import logging
+logger = logging.getLogger(__name__)
+HTML = "HTML"
+
+FAQ = {
+    'привет': '👋 Здравствуйте! Я помощник SLK VPN.',
+    'помощь': '📋 Я могу помочь с: VPN, подключением, трафиком, ключами, скоростью, ошибками.',
+    'vpn': '🔒 VPN шифрует трафик и скрывает IP.',
+    'подключ': '📱 Скачайте V2RayTun → нажмите "🔗 Ссылки" → "Открыть подписку".',
+    'ключ': '🔑 Ключи в разделе "🔑 Прямые ключи" или QR-код.',
+    'трафик': '📊 Трафик обновляется 1-го числа. Остаток в "📊 Мои данные".',
+    'лимит': '📈 Лимит устанавливает администратор.',
+    'скорость': '🚀 Обычно 50-400 Mbps.',
+    'сервер': '🖥 Серверы: Финляндия, Россия, Германия.',
+    'ошибк': '❌ Ошибка? Перезапустите приложение, обновите подписку, проверьте интернет.',
+    'контакт': '📞 Кнопка "💬 Написать админу".',
+    'безопасно': '🛡 Трафик шифруется, IP скрыт.',
+    'android': '🤖 Скачайте V2RayTun из Google Play.',
+    'ios': '🍎 Скачайте V2RayTun из App Store.',
+    'iphone': '🍎 Скачайте V2RayTun из App Store.',
+    'windows': '💻 Скачайте V2RayN или Nekoray.',
+    'мак': '💻 Для Mac — V2RayU или ClashX.',
+    'mac': '💻 Для Mac — V2RayU или ClashX.',
+    'роутер': '📡 Через OpenWrt или Keenetic.',
+    'телевизор': '📺 Через роутер или Android TV.',
+    'блокировк': '🚫 Обходит блокировки. Обновите подписку.',
+    'youtube': '▶ Может работать с перебоями.',
+    'инстаграм': '📸 Работает через VPN.',
+    'whatsapp': '💬 Работает без проблем.',
+    'telegram': '✈ Работает через VPN.',
+    'торрент': '📥 Работают, но помните о лимитах.',
+    'игры': '🎮 Работают, пинг чуть выше.',
+    'пинг': '📡 Финляндия 30-50ms, Россия 15-30ms.',
+    'цена': '💰 Уточняйте у администратора.',
+    'оплат': '💳 Обратитесь к администратору.',
+    'продлит': '🔄 Обратитесь к администратору.',
+    'срок': '⏰ В разделе "📊 Мои данные".',
+    'устройств': '📱 Без ограничений.',
+    'сброс': '🔄 Автоматически 1-го числа.',
+    'обновление': '🔄 "🔗 Ссылки" → "Открыть подписку".',
+    'пароль': '🔐 Не требуется.',
+    'логин': '👤 В разделе "📊 Мои данные".',
+    'удалить': '🗑 Обратитесь к администратору.',
+    'спасибо': '😊 Пожалуйста!',
+    'как дела': '🤖 Отлично! Работаю 24/7.',
+    'нет': '🤷 Напишите администратору.',
+    'плохо': '😟 Опишите проблему.',
+    'почему': '❓ Проверьте интернет, обновите подписку.',
+    'регистраци': '📝 Нажмите /start.',
+    'протокол': '🔌 VLESS с шифрованием Reality.',
+}
+
+async def ai_help(update: Update, context: CallbackContext) -> None:
+    if not is_admin(update.effective_user.id):
+        return
+    context.user_data['asking_ai'] = True
+    await update.message.reply_text(
+        "🤖 <b>AI ПОМОЩНИК</b>\n\nЗадайте вопрос!\nВыход: <b>выход</b>",
+        parse_mode='HTML'
+    )
+
+async def ai_answer(update: Update, context: CallbackContext) -> None:
+    text = update.message.text.lower().strip()
+    
+    if text in ['выход', 'exit', 'стоп']:
+        context.user_data.pop('asking_ai', None)
+        await update.message.reply_text("🤖 <b>AI завершён</b>", parse_mode='HTML')
+        return
+    
+    user = update.effective_user
+    client = db.get_client_by_telegram_id(user.id)
+    
+    if client and ('мой трафик' in text or 'статистика' in text):
+        from xui_api import _get
+        from server_info import format_traffic
+        try:
+            traffic = _get(f'/panel/api/clients/traffic/{client["login"]}')
+            if traffic.get('success'):
+                d = traffic.get('obj', {})
+                up, down, total = d.get('up',0), d.get('down',0), d.get('total',0)
+                used_gb = (up+down)/(1024**3)
+                total_gb = total/(1024**3) if total>0 else 0
+                pct = (used_gb/total_gb*100) if total_gb>0 else 0
+                answer = f"📊 <b>СТАТИСТИКА</b>\n\n👤 {client['login']}\n📥 {format_traffic(down)}\n📤 {format_traffic(up)}"
+                if total_gb>0: answer += f"\n📊 {used_gb:.1f}/{total_gb:.0f} GB ({pct:.0f}%)\n⏳ Осталось: {total_gb-used_gb:.1f} GB"
+                else: answer += f"\n📊 {used_gb:.1f} GB (безлимит)"
+                await update.message.reply_text(answer, parse_mode='HTML')
+                return
+        except: pass
+    
+    if client and ('подписк' in text or 'ссылка' in text):
+        from xui_api import get_sub_settings, _get
+        try:
+            r = _get('/panel/api/clients/list')
+            if r.get('success'):
+                for c in r.get('obj',[]):
+                    if c.get('email')==client['login']:
+                        sub_id = c.get('subId')
+                        if sub_id:
+                            s = get_sub_settings()
+                            host = s.get('sub_domain') or s.get('web_domain') or '144.31.133.182'
+                            link = f"https://{host}:{s.get('sub_port',8543)}{s.get('sub_path','/sub/')}{sub_id}"
+                            await update.message.reply_text(f"🔗 <b>ПОДПИСКА</b>\n\n<code>{link}</code>", parse_mode='HTML')
+                            return
+        except: pass
+    
+    for keyword, response in FAQ.items():
+        if keyword in text:
+            await update.message.reply_text(response, parse_mode='HTML')
+            return
+    
+    await update.message.reply_text(
+        "🤔 Не понял вопрос.\nНапишите <b>помощь</b> или <b>мой трафик</b> или <b>подписка</b>.",
+        parse_mode='HTML'
+    )
