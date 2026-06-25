@@ -197,6 +197,28 @@ async def error_handler(update: Update, context: CallbackContext) -> None:
             )
         except Exception as e:
             logger.error(f"Не удалось отправить сообщение об ошибке: {e}")
+async def show_nodes_list(update: Update, context: CallbackContext) -> None:
+    """Показывает список узлов"""
+    if not is_admin(update.effective_user.id):
+        return
+    
+    from xui_api import _get
+    r = _get('/panel/api/nodes/list')
+    if not r.get('success') or not r.get('obj'):
+        await update.message.reply_text("📋 <b>Нет узлов</b>", parse_mode='HTML')
+        return
+    
+    nodes = r.get('obj', [])
+    msg = "🔗 <b>УЗЛЫ ПАНЕЛИ</b>\n\n"
+    for node in nodes:
+        name = node.get('name', node.get('address', 'Без имени'))
+        status = node.get('status', 'unknown')
+        emoji = '🟢' if status == 'online' else '🔴'
+        msg += f"{emoji} <b>{name}</b>\n"
+        msg += f"   📍 {node.get('address', '?')}\n\n"
+    
+    await update.message.reply_text(msg, parse_mode='HTML')
+
 async def handle_message(update: Update, context: CallbackContext) -> None:
     """Обработка текстовых сообщений в зависимости от состояния"""
     user_id = update.effective_user.id
@@ -573,10 +595,14 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
             await show_changelog(update, context)
         elif message_text == "🚀 Скорость сервера":
             await server_speed_test(update, context)
+        elif message_text == "🔗 Узлы":
+            await show_nodes_list(update, context)
         elif message_text == "📰 3x-ui News":
             await show_changelog(update, context)
         elif message_text == "🚀 Скорость сервера":
             await server_speed_test(update, context)
+        elif message_text == "🔗 Узлы":
+            await show_nodes_list(update, context)
         elif message_text == "🔄 Автосброс":
             await auto_reset_status(update, context)
         elif message_text == "🔔 Уведомления":
