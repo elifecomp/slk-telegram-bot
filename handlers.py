@@ -141,7 +141,12 @@ async def handle_client_message(update: Update, context: CallbackContext) -> Non
 # ==================== ПРОВЕРКА ОБНОВЛЕНИЙ БОТА ====================
 import asyncio as asyncio_bot_upd
 
-BOT_VERSION = "v1.5.0"
+# Читаем версию из version.txt
+try:
+    with open('/opt/SLV_Bot/version.txt') as f:
+        BOT_VERSION = f.read().strip()
+except:
+    BOT_VERSION = "v1.0.0"
 GITHUB_RAW = "https://raw.githubusercontent.com/elifecomp/slk-telegram-bot/main"
 
 # ==================== АДМИНСКИЕ ФУНКЦИИ ====================
