@@ -197,6 +197,20 @@ def main() -> None:
         except: pass
     loop.create_task(startup_update_check())
 
+        # Отправляем сообщение о запуске админам
+    async def notify_startup():
+        await asyncio.sleep(3)
+        for admin_id in ADMIN_IDS:
+            try:
+                await application.bot.send_message(
+                    admin_id,
+                    "✅ <b>Бот перезагружен!</b>\n\n🔄 Обновление установлено\n📋 Нажмите /start",
+                    parse_mode='HTML'
+                )
+            except:
+                pass
+    loop.create_task(notify_startup())
+    
     application.run_polling()
 
 def check_audio_file():

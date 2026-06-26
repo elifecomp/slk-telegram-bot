@@ -202,6 +202,29 @@ async def error_handler(update: Update, context: CallbackContext) -> None:
             )
         except Exception as e:
             logger.error(f"Не удалось отправить сообщение об ошибке: {e}")
+async def update_bot_from_menu(update: Update, context: CallbackContext) -> None:
+    """Обновляет бота из меню"""
+    if not is_admin(update.effective_user.id):
+        return
+    
+    await update.message.reply_text("🔄 <b>Обновляю бота...</b>\n⏳ Подождите ~10 секунд", parse_mode='HTML')
+    
+    import subprocess, asyncio
+    
+    # Отправляем сообщение ДО перезапуска
+    await update.message.reply_text(
+        "✅ <b>Обновление установлено!</b>\n\n"
+        "🙏 Спасибо, что выбираете наш бот\n"
+        "для своих 3x-ui панелей!",
+        parse_mode='HTML'
+    )
+    await asyncio.sleep(1)
+    
+    subprocess.run(
+        "cd /opt/SLV_Bot && git pull && systemctl restart SLV-bot",
+        shell=True, capture_output=True, text=True, timeout=30
+    )
+
 async def show_nodes_list(update: Update, context: CallbackContext) -> None:
     """Показывает список узлов"""
     if not is_admin(update.effective_user.id):
@@ -602,12 +625,16 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
             await server_speed_test(update, context)
         elif message_text == "🔗 Узлы":
             await show_nodes_list(update, context)
+        elif message_text == "🔄 Обновить бота":
+            await update_bot_from_menu(update, context)
         elif message_text == "📰 3x-ui News":
             await show_changelog(update, context)
         elif message_text == "🚀 Скорость сервера":
             await server_speed_test(update, context)
         elif message_text == "🔗 Узлы":
             await show_nodes_list(update, context)
+        elif message_text == "🔄 Обновить бота":
+            await update_bot_from_menu(update, context)
         elif message_text == "🔄 Автосброс":
             await auto_reset_status(update, context)
         elif message_text == "🔔 Уведомления":
