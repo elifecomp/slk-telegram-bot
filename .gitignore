@@ -11,3 +11,6 @@ servers.txt
 *.bak2
 .traffic_notified
 apps/
+*.bak*
+analysis_data.txt
+.nodes_status
