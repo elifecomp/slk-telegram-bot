@@ -392,6 +392,28 @@ async def vpn_status(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(message, parse_mode=HTML)
 
 async def app_info(update: Update, context: CallbackContext) -> None:
+    """Отправляет APK-файл приложения"""
+    user = update.effective_user
+    client = db.get_client_by_telegram_id(user.id)
+    if not client:
+        await update.message.reply_text("❌  <b>Вы не зарегистрированы</b>", parse_mode='HTML')
+        return
+    
+    apk_path = "/opt/SLV_Bot/apps/🇷🇺 SLK 🕊.apk"
+    
+    if os.path.exists(apk_path):
+        await update.message.reply_text("📱 <b>Отправляю приложение...</b>", parse_mode='HTML')
+        with open(apk_path, "rb") as apk_file:
+            await update.message.reply_document(
+                apk_file,
+                filename="🇷🇺 SLK 🕊.apk",
+                caption="📱 <b>Имя приложения:</b> SLK\n👨‍💻 <b>Разработчик:</b> Рустам\n📦 <b>Версия:</b> 1.0.0",
+                parse_mode="HTML"
+            )
+    else:
+        await update.message.reply_text("❌ <b>Файл приложения не найден</b>", parse_mode='HTML')
+
+async def app_info_old(update: Update, context: CallbackContext) -> None:
     """Информация о приложении с inline-кнопками"""
     user = update.effective_user
     client = db.get_client_by_telegram_id(user.id)

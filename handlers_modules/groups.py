@@ -26,7 +26,7 @@ async def send_group_message(update: Update, context: CallbackContext) -> None:
         return
     group = context.user_data.get('selected_group')
     if not group:
-        await update.message.reply_text("❌  Группа не выбрана", parse_mode=HTML)
+        await update.message.reply_text("❌   Группа не выбрана", parse_mode=HTML)
         return
     context.user_data['state'] = BotState.GROUP_MESSAGE
     context.user_data['sending_to_group'] = True
@@ -44,10 +44,10 @@ async def handle_group_message(update: Update, context: CallbackContext) -> None
     if not context.user_data.get('sending_to_group'):
         return
     message_text = update.message.text
-    if message_text == "❌  Отменить":
+    if message_text == "❌   Отменить":
         context.user_data.pop('sending_to_group', None)
         context.user_data['state'] = BotState.GROUP_DETAIL_MENU
-        await update.message.reply_text("❌  Отменено", parse_mode=HTML)
+        await update.message.reply_text("❌   Отменено", parse_mode=HTML)
         return
     group = context.user_data.get('selected_group')
     if not group:
@@ -56,7 +56,7 @@ async def handle_group_message(update: Update, context: CallbackContext) -> None
     context.user_data['state'] = BotState.GROUP_DETAIL_MENU
     clients = db.get_clients_in_group(group['id'])
     if not clients:
-        await update.message.reply_text("❌  В группе нет клиентов", parse_mode=HTML)
+        await update.message.reply_text("❌   В группе нет клиентов", parse_mode=HTML)
         return
     await update.message.reply_text(f"🔄 Отправляю {len(clients)} клиентам...", parse_mode=HTML)
 
@@ -69,7 +69,7 @@ async def handle_group_message(update: Update, context: CallbackContext) -> None
                 try:
                     requests.post(
                         "http://144.31.133.182:8000/api/send-push-json",
-                        json={"email": email, "title": f"📢 {group['name']}", "body": message_text},
+                        json={"email": email, "title": f"📢 {group['name']}", "body": message_text, "notify_text": message_text},
                         timeout=5
                     )
                 except:
@@ -90,7 +90,7 @@ async def handle_group_message(update: Update, context: CallbackContext) -> None
             pass
 
     await update.message.reply_text(
-        f"✅  <b>Рассылка завершена!</b>\n\n"
+        f"✅   <b>Рассылка завершена!</b>\n\n"
         f"<b>Группа:</b> {group['name']}\n"
         f"👥 <b>Отправлено:</b> {sent}/{len(clients)}",
         reply_markup=create_group_actions_keyboard(),
@@ -125,7 +125,7 @@ async def group_detail(update: Update, context: CallbackContext) -> None:
             parse_mode=HTML
         )
     else:
-        await update.message.reply_text("❌  Группа не найдена", parse_mode=HTML)
+        await update.message.reply_text("❌   Группа не найдена", parse_mode=HTML)
 
 async def add_client_to_group_handler(update: Update, context: CallbackContext) -> None:
     """Добавляет клиента в группу"""
@@ -167,11 +167,11 @@ async def handle_add_to_group(update: Update, context: CallbackContext) -> None:
     if client:
         db.add_client_to_group(client['id'], group['id'])
         await update.message.reply_text(
-            f"✅  <b>{client['name']}</b> добавлен в группу <b>{group['name']}</b>",
+            f"✅   <b>{client['name']}</b> добавлен в группу <b>{group['name']}</b>",
             parse_mode=HTML
         )
     else:
-        await update.message.reply_text("❌  Клиент не найден", parse_mode=HTML)
+        await update.message.reply_text("❌   Клиент не найден", parse_mode=HTML)
     context.user_data['state'] = BotState.GROUP_DETAIL_MENU
     await update.message.reply_text(
         "Выберите действие:",
