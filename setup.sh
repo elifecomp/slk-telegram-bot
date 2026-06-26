@@ -112,6 +112,7 @@ install_bot() {
     fi
     
     git clone https://github.com/elifecomp/slk-telegram-bot.git /opt/SLV_Bot
+    mkdir -p /opt/SLV_Bot/apps
     cd /opt/SLV_Bot
     python3 -m venv venv
     source venv/bin/activate
