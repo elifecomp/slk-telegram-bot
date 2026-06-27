@@ -1,6 +1,6 @@
 """Регистрация пользователей"""
 import logging, asyncio, os, re
-from telegram import Update
+from telegram import Update, InputFile
 from telegram.ext import CallbackContext
 from config import ADMIN_IDS, WELCOME_AUDIO_PATH, BotState, BOT_NAME
 from keyboards import create_user_keyboard, create_cancel_keyboard, create_admin_keyboard
