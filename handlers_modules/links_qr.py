@@ -392,27 +392,43 @@ async def vpn_status(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(message, parse_mode=HTML)
 
 async def app_info(update: Update, context: CallbackContext) -> None:
-    """Отправляет APK-файл приложения"""
+    """Отправляет файлы из папки apps"""
     user = update.effective_user
     client = db.get_client_by_telegram_id(user.id)
     if not client:
         await update.message.reply_text("❌  <b>Вы не зарегистрированы</b>", parse_mode='HTML')
         return
     
-    apk_path = "/opt/SLV_Bot/apps/🇷🇺 SLK 🕊.apk"
+    apps_dir = "/opt/SLV_Bot/apps"
     
-    if os.path.exists(apk_path):
+    if not os.path.exists(apps_dir):
+        await update.message.reply_text("❌ <b>Папка с приложениями не найдена</b>", parse_mode='HTML')
+        return
+    
+    files = [f for f in os.listdir(apps_dir) if os.path.isfile(os.path.join(apps_dir, f))]
+    
+    if not files:
+        await update.message.reply_text("📱 <b>Нет доступных приложений</b>", parse_mode='HTML')
+        return
+    
+    if len(files) == 1:
+        filepath = os.path.join(apps_dir, files[0])
         await update.message.reply_text("📱 <b>Отправляю приложение...</b>", parse_mode='HTML')
-        with open(apk_path, "rb") as apk_file:
-            await update.message.reply_document(
-                apk_file,
-                filename="🇷🇺 SLK 🕊.apk",
-                caption="📱 <b>Имя приложения:</b> SLK\n👨‍💻 <b>Разработчик:</b> Рустам\n📦 <b>Версия:</b> 1.0.0",
-                parse_mode="HTML"
-            )
+        with open(filepath, "rb") as f:
+            await update.message.reply_document(f, filename=files[0])
     else:
-        await update.message.reply_text("❌ <b>Файл приложения не найден</b>", parse_mode='HTML')
-
+        keyboard = []
+        for filename in files:
+            keyboard.append([InlineKeyboardButton(
+                f"📥 {filename}",
+                callback_data=f"download_app_{filename}"
+            )])
+        
+        await update.message.reply_text(
+            "📱 <b>МОИ ПРИЛОЖЕНИЯ</b>\n\nВыберите файл для скачивания:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
 async def app_info_old(update: Update, context: CallbackContext) -> None:
     """Информация о приложении с inline-кнопками"""
     user = update.effective_user

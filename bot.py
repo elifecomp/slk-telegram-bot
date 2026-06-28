@@ -121,6 +121,7 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(handle_client_button, pattern="^back_to_inbounds$"))
     application.add_handler(CallbackQueryHandler(handle_client_button, pattern="^client_btn_"))
     application.add_handler(CallbackQueryHandler(handle_online_refresh, pattern="^online_refresh$"))
+    application.add_handler(CallbackQueryHandler(handle_download_app, pattern="^download_app_"))
     application.add_handler(CallbackQueryHandler(handle_qr_callback, pattern="^qr_"))
 
     application.add_handler(CallbackQueryHandler(handle_panel_switch, pattern="^panel_switch_"))
@@ -212,6 +213,19 @@ def main() -> None:
     loop.create_task(notify_startup())
     
     application.run_polling()
+
+async def handle_download_app(update, context):
+    query = update.callback_query
+    await query.answer()
+    filename = query.data.replace("download_app_", "")
+    filepath = f"/opt/SLV_Bot/apps/{filename}"
+    
+    if os.path.exists(filepath):
+        await query.edit_message_text("📱 <b>Отправляю файл...</b>", parse_mode='HTML')
+        with open(filepath, "rb") as f:
+            await query.message.reply_document(f, filename=filename)
+    else:
+        await query.edit_message_text("❌ <b>Файл не найден</b>", parse_mode='HTML')
 
 def check_audio_file():
     """Проверяет наличие аудиофайла при запуске"""
