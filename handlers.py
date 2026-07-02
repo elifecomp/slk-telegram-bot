@@ -250,6 +250,13 @@ async def show_nodes_list(update: Update, context: CallbackContext) -> None:
 async def handle_message(update: Update, context: CallbackContext) -> None:
     """Обработка текстовых сообщений в зависимости от состояния"""
     user_id = update.effective_user.id
+    
+    # Рассылка группе — обрабатываем любые сообщения (текст, медиа)
+    if context.user_data.get('sending_to_group'):
+        from handlers_modules.groups import handle_group_message
+        await handle_group_message(update, context)
+        return
+    
     current_state = context.user_data.get('state', BotState.MAIN_MENU)
     message_text = update.message.text
 
