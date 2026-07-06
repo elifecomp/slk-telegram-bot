@@ -190,7 +190,9 @@ class MorningGreeter:
                 if city:
                     try:
                         import requests as req
-                        r = req.get(f"http://wttr.in/{city}?format=3&lang=ru", timeout=5)
+                        import urllib.parse
+                        encoded_city = urllib.parse.quote(city)
+                        r = req.get(f"http://wttr.in/{encoded_city}?format=3&lang=ru", timeout=5)
                         if r.status_code == 200:
                             w = r.text.strip()
                             real_weather = f"🌤️ <b>Погода в {city} сейчас:</b>\n   {w}"
