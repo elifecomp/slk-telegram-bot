@@ -1,5 +1,7 @@
 """Уведомления и режимы"""
 import requests, json, subprocess
+import logging
+logger = logging.getLogger(__name__)
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton

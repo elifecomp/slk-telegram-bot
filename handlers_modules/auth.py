@@ -1,5 +1,7 @@
 """Администрирование и проверки"""
 import logging
+import logging
+logger = logging.getLogger(__name__)
 HTML = "HTML"
 from concurrent.futures import ThreadPoolExecutor
 from telegram import Update
