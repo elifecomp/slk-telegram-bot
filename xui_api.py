@@ -131,6 +131,9 @@ def get_client_ips(email: str) -> list:
     if r.get('success'):
         obj = r.get('obj', [])
         if isinstance(obj, list):
+            # Новый API возвращает список словарей, старый — список строк
+            if obj and isinstance(obj[0], dict):
+                return [item.get('ip', str(item)) for item in obj]
             return obj
     return []
 
