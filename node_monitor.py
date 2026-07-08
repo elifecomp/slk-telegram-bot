@@ -9,6 +9,24 @@ logger = logging.getLogger(__name__)
 NODES_FILE = "/opt/SLV_Bot/.nodes_status"
 CHECK_INTERVAL = 300  # 5 минут
 
+def get_panel_host():
+    """Получает хост панели из .env или настроек"""
+    try:
+        import os
+        # Пробуем из .env
+        env_file = "/opt/SLV_Bot/.env"
+        if os.path.exists(env_file):
+            with open(env_file) as f:
+                for line in f:
+                    if line.startswith("XUI_PANEL_URL="):
+                        url = line.split("=", 1)[1].strip()
+                        from urllib.parse import urlparse
+                        parsed = urlparse(url)
+                        return parsed.hostname or "unknown"
+    except:
+        pass
+    return "unknown"
+
 def get_nodes():
     """Получает список узлов из панели"""
     import os
@@ -47,18 +65,16 @@ async def node_monitor(app):
                 
                 if status != 'online' and prev == 'online':
                     alerts.append(
-                        f"🔴 <b>УЗЕЛ НЕДОСТУПЕН!</b>\n\n"
-                        f"📡 <b>{name}</b>\n"
-                        f"📍 {node.get('address', '?')}\n"
+                        f"📡 {get_panel_host()}\n"
+                        f"🔴 <b>Узел {name} НЕДОСТУПЕН</b>\n"
                         f"🕐 {datetime.now().strftime('%H:%M:%S')}"
                     )
                 elif status == 'online' and prev != 'online':
                     latency = node.get('latencyMs', '?')
                     alerts.append(
-                        f"🟢 <b>УЗЕЛ В СЕТИ</b>\n\n"
-                        f"📡 <b>{name}</b>\n"
-                        f"📍 {node.get('address', '?')}\n"
-                        f"⚡ Задержка: {latency} мс\n"
+                        f"📡 {get_panel_host()}\n"
+                        f"🟢 <b>Узел {name} В СЕТИ</b>\n"
+                        f"Задержка: {latency} мс\n"
                         f"🕐 {datetime.now().strftime('%H:%M:%S')}"
                     )
             
