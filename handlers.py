@@ -1,4 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
+import logging
+logger = logging.getLogger(__name__)
 HTML = 'HTML'
 from operators import get_operator
 import logging
@@ -192,7 +194,10 @@ async def button_callback(update: Update, context: CallbackContext) -> None:
 
 async def error_handler(update: Update, context: CallbackContext) -> None:
     """Обработчик ошибок"""
-    logger.error(f"Ошибка при обработке сообщения: {context.error}")
+    try:
+        logger.error(f"Ошибка при обработке сообщения: {context.error}")
+    except:
+        pass
 
     if update and update.effective_message:
         try:
@@ -201,7 +206,10 @@ async def error_handler(update: Update, context: CallbackContext) -> None:
                 parse_mode=HTML
             )
         except Exception as e:
-            logger.error(f"Не удалось отправить сообщение об ошибке: {e}")
+            try:
+                logger.error(f"Не удалось отправить сообщение об ошибке: {e}")
+            except:
+                pass
 async def update_bot_from_menu(update: Update, context: CallbackContext) -> None:
     """Обновляет бота из меню"""
     if not is_admin(update.effective_user.id):
@@ -258,7 +266,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         return
     
     current_state = context.user_data.get('state', BotState.MAIN_MENU)
-    message_text = update.message.text
+    message_text = update.message.text if update.message else ""
 
     # Проверяем ввод Telegram ID
     if context.user_data.get('waiting_for_server'):
@@ -362,7 +370,10 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         else:
             context.user_data.pop('awaiting_delete_confirmation', None)
 
-    logger.info(f"Получено сообщение: '{message_text}' от пользователя {user_id}, состояние: {current_state}")
+    try:
+        logger.info(f"Получено сообщение: '{message_text}' от пользователя {user_id}, состояние: {current_state}")
+    except:
+        pass
 
     # Обработка состояний админа по отправке сообщений
     if current_state == BotState.ADMIN_CHOOSE_USER:

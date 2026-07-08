@@ -40,15 +40,14 @@ async def send_group_message(update: Update, context: CallbackContext) -> None:
     )
 
 async def handle_group_message(update: Update, context: CallbackContext) -> None:
-    """Обрабатывает любое сообщение для группы (текст, фото, файлы, музыка)"""
+    """Рассылка сообщений группе (текст, фото, файлы, музыка)"""
     if not context.user_data.get('sending_to_group'):
         return
     
-    # Отмена
-    if update.message.text and update.message.text == "❌ Отменить":
+    if update.message and update.message.text and update.message.text == "❌ Отменить":
         context.user_data.pop('sending_to_group', None)
         context.user_data['state'] = BotState.GROUP_DETAIL_MENU
-        await update.message.reply_text("❌ Отменено", parse_mode='HTML')
+        await update.message.reply_text("❌ Отменено")
         return
     
     group = context.user_data.get('selected_group')
@@ -60,90 +59,38 @@ async def handle_group_message(update: Update, context: CallbackContext) -> None
     
     clients = db.get_clients_in_group(group['id'])
     if not clients:
-        await update.message.reply_text("❌ В группе нет клиентов", parse_mode='HTML')
+        await update.message.reply_text("❌ В группе нет клиентов")
         return
     
-    await update.message.reply_text(f"🔄 Отправляю {len(clients)} клиентам...", parse_mode='HTML')
+    await update.message.reply_text(f"🔄 Отправляю {len(clients)} клиентам...")
     
     sent = 0
     for client in clients:
         tg_id = client.get('telegram_id')
         if tg_id and tg_id > 0:
             try:
-                # Пересылаем в зависимости от типа сообщения
-                if update.message.photo:
-                    await context.bot.send_photo(tg_id, update.message.photo[-1].file_id, caption=update.message.caption)
-                elif update.message.video:
-                    await context.bot.send_video(tg_id, update.message.video.file_id, caption=update.message.caption)
-                elif update.message.audio:
-                    await context.bot.send_audio(tg_id, update.message.audio.file_id, caption=update.message.caption)
-                elif update.message.voice:
-                    await context.bot.send_voice(tg_id, update.message.voice.file_id, caption=update.message.caption)
-                elif update.message.document:
-                    await context.bot.send_document(tg_id, update.message.document.file_id, caption=update.message.caption)
-                elif update.message.sticker:
-                    await context.bot.send_sticker(tg_id, update.message.sticker.file_id)
-                elif update.message.text:
-                    await context.bot.send_message(tg_id, update.message.text, parse_mode='HTML')
-                sent += 1
-            except Exception as e:
-                logger.error(f"Ошибка отправки клиенту {tg_id}: {e}")
+                if update.message:
+                    if update.message.photo:
+                        await context.bot.send_photo(tg_id, update.message.photo[-1].file_id, caption=update.message.caption or "")
+                    elif update.message.video:
+                        await context.bot.send_video(tg_id, update.message.video.file_id, caption=update.message.caption or "")
+                    elif update.message.audio:
+                        await context.bot.send_audio(tg_id, update.message.audio.file_id, caption=update.message.caption or "")
+                    elif update.message.voice:
+                        await context.bot.send_voice(tg_id, update.message.voice.file_id)
+                    elif update.message.document:
+                        await context.bot.send_document(tg_id, update.message.document.file_id, caption=update.message.caption or "")
+                    elif update.message.sticker:
+                        await context.bot.send_sticker(tg_id, update.message.sticker.file_id)
+                    elif update.message.text:
+                        await context.bot.send_message(tg_id, update.message.text)
+                    sent += 1
+            except:
+                pass
     
     await update.message.reply_text(
-        f"✅ <b>Рассылка завершена!</b>\n\nГруппа: {group['name']}\n👥 Отправлено: {sent}/{len(clients)}",
-        parse_mode='HTML'
-    )
-    if message_text == "❌   Отменить":
-        context.user_data.pop('sending_to_group', None)
-        context.user_data['state'] = BotState.GROUP_DETAIL_MENU
-        await update.message.reply_text("❌   Отменено", parse_mode=HTML)
-        return
-    group = context.user_data.get('selected_group')
-    if not group:
-        return
-    context.user_data.pop('sending_to_group', None)
-    context.user_data['state'] = BotState.GROUP_DETAIL_MENU
-    clients = db.get_clients_in_group(group['id'])
-    if not clients:
-        await update.message.reply_text("❌   В группе нет клиентов", parse_mode=HTML)
-        return
-    await update.message.reply_text(f"🔄 Отправляю {len(clients)} клиентам...", parse_mode=HTML)
-
-    # ===== Отправляем PUSH-уведомления =====
-    try:
-        import requests
-        emails = [c.get('login') for c in clients if c.get('login')]
-        if emails:
-            for email in emails:
-                try:
-                    requests.post(
-                        "http://144.31.133.182:8000/api/send-push-json",
-                        json={"email": email, "title": f"📢 {group['name']}", "body": message_text, "notify_text": message_text},
-                        timeout=5
-                    )
-                except:
-                    pass
-    except:
-        pass
-
-    sent = 0
-    for client in clients:
-        try:
-            await context.bot.send_message(
-                client['telegram_id'],
-                f"💌 <b>Сообщение от SLK</b>\n\n{message_text}\n\n📁 Группа: {group['name']}",
-                parse_mode='HTML'
-            )
-            sent += 1
-        except:
-            pass
-
-    await update.message.reply_text(
-        f"✅   <b>Рассылка завершена!</b>\n\n"
-        f"<b>Группа:</b> {group['name']}\n"
-        f"👥 <b>Отправлено:</b> {sent}/{len(clients)}",
-        reply_markup=create_group_actions_keyboard(),
-        parse_mode=HTML
+        f"✅ Рассылка завершена!\n\nГруппа: {group['name']}\n👥 Отправлено: {sent}/{len(clients)}",
+        reply_markup=create_group_actions_keyboard()
     )
 
 async def group_detail(update: Update, context: CallbackContext) -> None:
