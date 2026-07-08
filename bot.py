@@ -13,6 +13,7 @@ from database import db
 from connection_notifier import init_notifier, stop_notifier
 from auto_reset import init_auto_reset, stop_auto_reset
 from traffic_notifier import traffic_monitor
+from node_monitor import node_monitor
 from update_checker import init_update_checker, stop_update_checker
 from morning_greeter import init_greeter, stop_greeter
 from birthday_greeter import init_birthday_greeter, stop_birthday_greeter
@@ -155,6 +156,7 @@ def main() -> None:
 
     # Запускаем фоновую проверку обновлений
     loop.create_task(traffic_monitor(application))
+    loop.create_task(node_monitor(application))
         # Запускаем бэкап панели раз в сутки
     async def panel_backup_task():
         await asyncio.sleep(60)
