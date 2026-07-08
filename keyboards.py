@@ -164,9 +164,15 @@ def create_settings_keyboard():
 def create_groups_keyboard(groups):
     """Клавиатура со списком групп"""
     keyboard = []
+    row = []
     for g in groups:
         count = len(db.get_clients_in_group(g['id']))
-        keyboard.append([f"📁 {g['name']} ({count})"])
+        row.append(f"📁 {g['name']} ({count})")
+        if len(row) == 2:
+            keyboard.append(row)
+            row = []
+    if row:
+        keyboard.append(row)
     keyboard.append(["➕  Создать группу", "🗑 Удалить группу"])
     keyboard.append(["⬅️ Назад в меню"])
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
