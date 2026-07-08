@@ -216,7 +216,7 @@ async def check_bot_update_manual(update: Update, context: CallbackContext) -> N
             msg += f"\n<i>Данные с GitHub</i>"
 
             if latest != BOT_VERSION:
-                msg += f"\n\n🔄 Для обновления:\n<code>slk-menu</code> → Обновить"
+                msg += f"\n\n🔄 Для обновления: нажмите <b>🔄 Обновить бота</b> в Настройках"
 
             await update.message.reply_text(msg, parse_mode='HTML')
         else:
