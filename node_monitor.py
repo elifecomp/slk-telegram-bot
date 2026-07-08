@@ -7,7 +7,7 @@ from telegram.ext import CallbackContext
 logger = logging.getLogger(__name__)
 
 NODES_FILE = "/opt/SLV_Bot/.nodes_status"
-CHECK_INTERVAL = 300  # 5 минут
+CHECK_INTERVAL = 100  # 5 минут
 
 def get_panel_host():
     """Получает хост панели из .env или настроек"""
@@ -52,7 +52,9 @@ async def node_monitor(app):
     
     while True:
         try:
+            logger.info(f"🔍 Проверка узлов...")
             nodes = get_nodes()
+            logger.info(f"🔍 Найдено узлов: {len(nodes)}")
             current = {}
             alerts = []
             
