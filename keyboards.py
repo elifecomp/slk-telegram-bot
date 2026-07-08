@@ -153,13 +153,11 @@ def create_panel_switch_keyboard():
 def create_settings_keyboard():
     """Клавиатура настроек бота"""
     keyboard = [
-        ["🔄 Перезагрузить"],
-                ["🔄 Автосброс", "🖥️ Мониторинг"],
-        ["📰 SLK News", "🔗 Узлы"],
-        ["🔄 Обновить бота"],
-        ["📰 3x-ui News"],
-        ["🚀 Скорость сервера"],
-                ["⬅️ Назад в меню"]
+        ["🔄 Перезагрузить", "🔄 Обновить бота"],
+        ["🔄 Автосброс", "🖥️ Мониторинг"],
+        ["📰 SLK News", "📰 3x-ui News"],
+        ["🔗 Узлы", "🚀 Скорость сервера"],
+        ["⬅️ Назад в меню"]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
