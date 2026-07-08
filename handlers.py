@@ -215,19 +215,31 @@ async def update_bot_from_menu(update: Update, context: CallbackContext) -> None
     if not is_admin(update.effective_user.id):
         return
     
-    await update.message.reply_text("🔄 <b>Обновляю бота...</b>\n⏳ Подождите ~10 секунд", parse_mode='HTML')
-    
+    await update.message.reply_text("🔄 <b>Проверяю обновления...</b>", parse_mode='HTML')
     import subprocess, asyncio
     
-    # Отправляем сообщение ДО перезапуска
-    await update.message.reply_text(
-        "✅ <b>Обновление установлено!</b>\n\n"
-        "🙏 Спасибо, что выбираете наш бот\n"
-        "для своих 3x-ui панелей!",
-        parse_mode='HTML'
+    subprocess.run("cd /opt/SLV_Bot && git fetch", shell=True, capture_output=True, timeout=10)
+    result = subprocess.run(
+        "cd /opt/SLV_Bot && git rev-list HEAD...origin/main --count",
+        shell=True, capture_output=True, text=True, timeout=10
     )
-    await asyncio.sleep(1)
+    updates = result.stdout.strip()
     
+    if updates and updates != '0':
+        await update.message.reply_text(
+            f"🔄 <b>Обновляю бота...</b>\n📦 Доступно обновлений: {updates}\n⏳ Подождите ~10 секунд",
+            parse_mode='HTML'
+        )
+        await asyncio.sleep(1)
+        subprocess.run(
+            "cd /opt/SLV_Bot && git pull && systemctl restart SLV-bot",
+            shell=True, capture_output=True, timeout=30
+        )
+    else:
+        await update.message.reply_text(
+            "✅ <b>У вас актуальная версия!</b>\n\nОбновлений нет.",
+            parse_mode='HTML'
+        )
     subprocess.run(
         "cd /opt/SLV_Bot && git pull && systemctl restart SLV-bot",
         shell=True, capture_output=True, text=True, timeout=30
