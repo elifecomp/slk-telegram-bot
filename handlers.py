@@ -232,7 +232,7 @@ async def update_bot_from_menu(update: Update, context: CallbackContext) -> None
         )
         await asyncio.sleep(1)
         subprocess.run(
-            "cd /opt/SLV_Bot cd /opt/SLV_Bot && git pull && systemctl restart SLV-botcd /opt/SLV_Bot && git pull && systemctl restart SLV-bot git fetch --all cd /opt/SLV_Bot && git pull && systemctl restart SLV-botcd /opt/SLV_Bot && git pull && systemctl restart SLV-bot git reset --hard origin/main cd /opt/SLV_Bot && git pull && systemctl restart SLV-botcd /opt/SLV_Bot && git pull && systemctl restart SLV-bot systemctl restart SLV-bot",
+            "cd /opt/SLV_Bot && git fetch --all && git reset --hard origin/main && systemctl restart SLV-bot",
             shell=True, capture_output=True, timeout=30
         )
     else:
@@ -241,7 +241,7 @@ async def update_bot_from_menu(update: Update, context: CallbackContext) -> None
             parse_mode='HTML'
         )
     subprocess.run(
-        "cd /opt/SLV_Bot cd /opt/SLV_Bot && git pull && systemctl restart SLV-botcd /opt/SLV_Bot && git pull && systemctl restart SLV-bot git fetch --all cd /opt/SLV_Bot && git pull && systemctl restart SLV-botcd /opt/SLV_Bot && git pull && systemctl restart SLV-bot git reset --hard origin/main cd /opt/SLV_Bot && git pull && systemctl restart SLV-botcd /opt/SLV_Bot && git pull && systemctl restart SLV-bot systemctl restart SLV-bot",
+        "cd /opt/SLV_Bot && git fetch --all && git reset --hard origin/main && systemctl restart SLV-bot",
         shell=True, capture_output=True, text=True, timeout=30
     )
 
