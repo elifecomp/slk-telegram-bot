@@ -7,11 +7,15 @@ API2_TOKEN=$(grep "^XUI2_API_TOKEN=" "$ENV_FILE" | cut -d= -f2)
 PANEL_URL=$(grep "^XUI_PANEL_URL=" "$ENV_FILE" | cut -d= -f2)
 PANEL2_URL=$(grep "^XUI2_PANEL_URL=" "$ENV_FILE" | cut -d= -f2)
 
+# Извлекаем хосты
+HOST1=$(echo "$PANEL_URL" | sed 's|https://||;s|:.*||;s|/.*||')
+HOST2=$(echo "$PANEL2_URL" | sed 's|https://||;s|:.*||;s|/.*||')
+
 DATE=$(date '+%d.%m.%Y %H:%M')
 DAY=$(date '+%d.%m.%Y')
 IFS=',' read -ra ADMINS <<< "$ADMIN_IDS"
 
-# Скачиваем обе панели
+# Скачиваем во временные файлы
 curl -s -H "Authorization: Bearer $API_TOKEN" "$PANEL_URL/panel/api/server/getDb" -o /tmp/x-ui.db
 curl -s -H "Authorization: Bearer $API_TOKEN" "$PANEL_URL/panel/api/server/getConfigJson" -o /tmp/config.json
 curl -s -k -H "Authorization: Bearer $API2_TOKEN" "$PANEL2_URL/panel/api/server/getDb" -o /tmp/x-ui2.db
@@ -24,44 +28,43 @@ if [ -s /tmp/x-ui.db ] && [ -s /tmp/config.json ]; then
     SIZE_CFG2=$(du -h /tmp/config2.json 2>/dev/null | cut -f1)
     
     for CHAT_ID in "${ADMINS[@]}"; do
-        # Файлы первой панели
+        # Файлы первой панели — с доменом в имени
         curl -s -F "chat_id=$CHAT_ID" \
-             -F "document=@/tmp/x-ui.db" \
-             -F "caption=🇫🇮 Финляндия — x-ui.db ($DATE)" \
+             -F "document=@/tmp/x-ui.db;filename=${HOST1}.db" \
+             -F "caption=🇫🇮 Финляндия — база данных (${DATE})" \
              "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" > /dev/null
         
         curl -s -F "chat_id=$CHAT_ID" \
-             -F "document=@/tmp/config.json" \
-             -F "caption=🇫🇮 Финляндия — config.json ($DATE)" \
+             -F "document=@/tmp/config.json;filename=${HOST1}.json" \
+             -F "caption=🇫🇮 Финляндия — конфиг (${DATE})" \
              "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" > /dev/null
         
         # Файлы второй панели
         if [ -s /tmp/x-ui2.db ]; then
             curl -s -F "chat_id=$CHAT_ID" \
-                 -F "document=@/tmp/x-ui2.db" \
-                 -F "caption=🇷🇺 Россия — x-ui.db ($DATE)" \
+                 -F "document=@/tmp/x-ui2.db;filename=${HOST2}.db" \
+                 -F "caption=🇷🇺 Россия — база данных (${DATE})" \
                  "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" > /dev/null
         fi
         
         if [ -s /tmp/config2.json ]; then
             curl -s -F "chat_id=$CHAT_ID" \
-                 -F "document=@/tmp/config2.json" \
-                 -F "caption=🇷🇺 Россия — config.json ($DATE)" \
+                 -F "document=@/tmp/config2.json;filename=${HOST2}.json" \
+                 -F "caption=🇷🇺 Россия — конфиг (${DATE})" \
                  "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" > /dev/null
         fi
         
-        # Инфо-сообщение
         TEXT="📦 БЭКАП ПАНЕЛЕЙ 3X-UI
 📅 $DAY
 🕐 $DATE
 
-🇫🇮 Финляндия:
-  🗄 x-ui.db — $SIZE_DB
-  ⚙️ config.json — $SIZE_CFG
+🇫🇮 Финляндия (${HOST1}):
+  🗄 ${HOST1}.db — $SIZE_DB
+  ⚙️ ${HOST1}.json — $SIZE_CFG
 
-🇷🇺 Россия:
-  🗄 x-ui.db — $SIZE_DB2
-  ⚙️ config.json — $SIZE_CFG2
+🇷🇺 Россия (${HOST2}):
+  🗄 ${HOST2}.db — $SIZE_DB2
+  ⚙️ ${HOST2}.json — $SIZE_CFG2
 
 ✅ Бэкап выполнен успешно"
         
