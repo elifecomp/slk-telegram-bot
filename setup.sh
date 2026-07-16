@@ -52,44 +52,6 @@ show_menu() {
 install_bot() {
     echo -e "${GREEN}🚀 Установка SLK бота...${NC}"
     
-    echo -e "${CYAN}🔐 Проверка доступа...${NC}"
-    read -p "Ваш Telegram ID: " TG_ID
-    read -p "Ваше имя пользователя: " TG_USER
-    
-    if [ -z "$TG_ID" ]; then
-        echo -e "${RED}❌ Telegram ID обязателен!${NC}"
-        return
-    fi
-    
-    MY_IP=$(curl -s ifconfig.me 2>/dev/null || echo "unknown")
-    echo -e "${CYAN}📤 Отправляю запрос администратору...${NC}"
-    
-    REQ_ID=$(curl -s "http://144.31.133.182:5555/install-request?tg_id=${TG_ID}&user=${TG_USER}&ip=${MY_IP}")
-    
-    if [ -z "$REQ_ID" ]; then
-        echo -e "${RED}❌ Сервер авторизации недоступен!${NC}"
-        return
-    fi
-    
-    echo -e "${YELLOW}⏳ Ожидайте подтверждения (ID: ${REQ_ID})...${NC}"
-    
-    for i in $(seq 1 120); do
-        STATUS=$(curl -s "http://144.31.133.182:5555/install-check?id=${REQ_ID}")
-        if [ "$STATUS" = "approved" ]; then
-            echo -e "${GREEN}✅ Доступ разрешён! Начинаю установку...${NC}"
-            break
-        elif [ "$STATUS" = "rejected" ]; then
-            echo -e "${RED}❌ Администратор отклонил запрос!${NC}"
-            return
-        fi
-        sleep 5
-    done
-    
-    if [ "$STATUS" != "approved" ]; then
-        echo -e "${RED}⏰ Время ожидания истекло!${NC}"
-        return
-    fi
-    
     apt update -qq && apt install -y python3 python3-pip python3-venv git curl 2>/dev/null
     
     if ! command -v speedtest-cli &>/dev/null; then
