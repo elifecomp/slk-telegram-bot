@@ -173,7 +173,7 @@ def create_groups_keyboard(groups):
             row = []
     if row:
         keyboard.append(row)
-    keyboard.append(["➕  Создать группу", "🗑 Удалить группу"])
+    keyboard.append(["➕ Создать группу", "🗑 Удалить группу"])
     keyboard.append(["⬅️ Назад в меню"])
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
