@@ -142,6 +142,11 @@ def delete_client_by_email(inbound_id: int, email: str) -> bool:
     return r.get('success', False)
 
 def reset_client_traffic(inbound_id: int, email: str) -> bool:
+    # Пробуем новый API (без inbound_id)
+    r = _post(f'/panel/api/clients/resetTraffic/{email}')
+    if r.get('success'):
+        return True
+    # Fallback на старый API
     r = _post(f'/panel/api/inbounds/{inbound_id}/resetClientTraffic/{email}')
     return r.get('success', False)
 
