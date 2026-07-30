@@ -294,7 +294,7 @@ async def write_to_admin(update: Update, context: CallbackContext) -> None:
     context.user_data['state'] = BotState.WRITING_TO_ADMIN
     context.user_data['client_writing'] = True
 
-    await update.message.reply_sticker('CAACAgIAAxkBAAI1jGohma-WwrzzcMUL2eo3uKKtfP5NAAIDEAACFIrJSQy6GxfYgpcDOwQ')
+    await update.message.reply_sticker('CAACAgEAAxkBAAIBCmprRut5_slwQ7QIEYCdjF-yUOYFAAIQAAOxXeBNb3lZd7FbgXs9BA')
     message = "💬 <b>Написать администратору</b>\n\n"
     message += "<b>Введите ваше сообщение:</b>\n"
     message += "<i>• Можно отправить текст\n"
