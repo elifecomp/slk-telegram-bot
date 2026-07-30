@@ -206,7 +206,7 @@ class MorningGreeter:
                 message += BOT_NAME
 
                 try:
-                    await self.bot.send_sticker(user['telegram_id'], 'CAACAgIAAxkBAAI1pWohpKq-oXMroLn6_KG-3IAZdRRQAAL1KAACCKQwStmJ6UyR9MekOwQ')
+                    await self.bot.send_sticker(user['telegram_id'], 'CAACAgIAAxkBAAIBAmprRMNSOk425Xq4rYOaYBqC4z7dAAI_EgACOXbBS14TFaG4AAHWYD0E')
                 except:
                     pass
                 await self.bot.send_message(user['telegram_id'], message, parse_mode='HTML')
