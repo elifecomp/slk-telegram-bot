@@ -7,6 +7,7 @@ from config import ADMIN_ID, ADMIN_IDS
 from handlers.client_portal import (
     get_admin_keyboard_with_portal,
     send_client_menu,
+    sync_client_login_from_panel,
 )
 from services.clients_db import (
     ensure_client_registered,
@@ -70,7 +71,10 @@ async def cmd_start(message: Message):
         client_row = synced
     client_name = str((client_row or {}).get("name") or message.from_user.full_name or "Клиент").strip()
 
-    if has_manual_user_access(uid) or await has_panel_access(uid, force_refresh=True):
+    client_row = await sync_client_login_from_panel(client_row) or client_row
+    client_name = str((client_row or {}).get("name") or message.from_user.full_name or "Клиент").strip()
+
+    if has_manual_user_access(uid) or await has_panel_access(uid, force_refresh=False, timeout_sec=2.0):
         mark_access_notified(uid, notified=True)
         await send_client_menu(message, client_name=client_name, is_preview=False)
         return

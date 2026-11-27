@@ -1,3 +1,5 @@
+import asyncio
+import json
 from html import escape
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
@@ -15,6 +17,7 @@ from aiogram.types import (
 
 from keyboards.main_kb import get_main_keyboard
 from services.clients_db import (
+    delete_client_by_id,
     get_client_by_id,
     grant_manual_user_access,
     get_client_by_tg_id,
@@ -115,7 +118,21 @@ def build_user_card_keyboard(client_id: int | str) -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="Изменить рождение", callback_data=f"edit_user:{client_id}:birthday"),
             ],
             [
+                InlineKeyboardButton(text="🗑 Удалить из базы", callback_data=f"del_user_ask:{client_id}"),
+            ],
+            [
                 InlineKeyboardButton(text="⬅️ К списку пользователей", callback_data="portal_users_back"),
+            ],
+        ]
+    )
+
+
+def build_user_delete_confirm_keyboard(client_id: int | str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✅ Да, удалить", callback_data=f"del_user_yes:{client_id}"),
+                InlineKeyboardButton(text="❌ Отмена", callback_data=f"portal_user:{client_id}"),
             ],
         ]
     )
@@ -290,6 +307,11 @@ async def open_users_inline_list(message: Message, state: FSMContext) -> None:
         return
     await state.clear()
     users = list_clients()
+    if users:
+        synced_users = []
+        for u in users:
+            synced_users.append(await sync_client_login_from_panel(u) or u)
+        users = synced_users
     if not users:
         await message.answer(
             "👥 <b>ПОЛЬЗОВАТЕЛИ</b>\n"
@@ -314,6 +336,87 @@ async def open_users_inline_list(message: Message, state: FSMContext) -> None:
     )
 
 
+def _collect_emails_for_tg(obj, target_tg: int, found: list[str]) -> None:
+    if isinstance(obj, dict):
+        tg_val = None
+        for k in ("tgId", "tg_id", "telegram_id", "telegramId"):
+            if k in obj and obj.get(k) is not None and not isinstance(obj.get(k), bool):
+                s = str(obj.get(k)).strip()
+                if s.isdigit():
+                    tg_val = int(s)
+                    break
+        email_val = str(obj.get("email") or "").strip()
+        if tg_val == target_tg and email_val and email_val not in found:
+            found.append(email_val)
+
+        for list_key in ("clients", "clientStats", "obj", "data", "list", "items", "inbounds"):
+            if list_key in obj:
+                _collect_emails_for_tg(obj.get(list_key), target_tg, found)
+
+        settings_val = obj.get("settings")
+        if isinstance(settings_val, str) and settings_val.strip():
+            try:
+                _collect_emails_for_tg(json.loads(settings_val), target_tg, found)
+            except Exception:
+                pass
+        elif isinstance(settings_val, dict):
+            _collect_emails_for_tg(settings_val, target_tg, found)
+    elif isinstance(obj, list):
+        for item in obj:
+            _collect_emails_for_tg(item, target_tg, found)
+
+
+async def sync_client_login_from_panel(client_row: dict | None) -> dict | None:
+    if not client_row:
+        return client_row
+    raw_tg = client_row.get("telegram_id")
+    if raw_tg is None or isinstance(raw_tg, bool):
+        return client_row
+    s = str(raw_tg).strip()
+    if not s.isdigit():
+        return client_row
+    tg_int = int(s)
+
+    emails = await _find_panel_emails_by_tg_id(tg_int, timeout_sec=2.0)
+    if not emails:
+        return client_row
+
+    panel_login = emails[0]
+    cur_login = str(client_row.get("login") or "").strip()
+    if cur_login != panel_login:
+        try:
+            from services.clients_db import _connect, ensure_clients_table
+            ensure_clients_table()
+            with _connect() as conn:
+                if not conn.execute(
+                    "SELECT 1 FROM clients WHERE login = ? AND telegram_id != ? LIMIT 1",
+                    (panel_login, tg_int),
+                ).fetchone():
+                    conn.execute(
+                        "UPDATE clients SET login = ? WHERE telegram_id = ?",
+                        (panel_login, tg_int),
+                    )
+                    conn.commit()
+        except Exception:
+            pass
+        refreshed = get_client_by_tg_id(tg_int)
+        if refreshed:
+            return refreshed
+    return client_row
+
+
+async def _find_panel_emails_by_tg_id(target_tg_id: int, timeout_sec: float = 2.5) -> list[str]:
+    try:
+        ok, inbounds, _ = await asyncio.wait_for(fetch_inbounds(), timeout=timeout_sec)
+    except Exception:
+        return []
+    if not ok or not inbounds:
+        return []
+    emails: list[str] = []
+    _collect_emails_for_tg(inbounds, target_tg_id, emails)
+    return emails
+
+
 @router.message(F.users_shared)
 async def on_users_shared_add_client(message: Message, state: FSMContext) -> None:
     if not is_admin_user(message.from_user.id if message.from_user else None):
@@ -330,20 +433,41 @@ async def on_users_shared_add_client(message: Message, state: FSMContext) -> Non
     full_name = " ".join(p for p in (first_name.strip(), last_name.strip()) if p).strip() or None
     username = getattr(picked, "username", None)
 
+    panel_emails = await _find_panel_emails_by_tg_id(target_tg_id)
+    panel_login = panel_emails[0] if panel_emails else None
+
     client_row, is_new = grant_manual_user_access(
         telegram_id=target_tg_id,
         name=full_name,
-        username=username,
+        username=panel_login or username,
     )
-    saved_name = escape(str((client_row or {}).get("name") or full_name or f"User {target_tg_id}"))
-    saved_login = escape(str((client_row or {}).get("login") or (f"@{username}" if username else f"tg_{target_tg_id}")))
+
+    if panel_login:
+        try:
+            from services.clients_db import _connect, ensure_clients_table
+            ensure_clients_table()
+            with _connect() as conn:
+                conn.execute(
+                    "UPDATE clients SET login = ? WHERE telegram_id = ?",
+                    (panel_login, target_tg_id),
+                )
+                conn.commit()
+        except Exception:
+            pass
+        saved_login_display = f"<code>{escape(', '.join(panel_emails))}</code>"
+        panel_status_line = f"• Логин (из панели): {saved_login_display}"
+        display_name = escape(full_name or panel_login)
+    else:
+        panel_status_line = "• Панель 3X-UI: <b>TG ID не найден — добавьте пользователя в панель</b>"
+        display_name = escape(full_name or "Не указано (добавьте в панель)")
+
     status_title = "✅ <b>ПОЛЬЗОВАТЕЛЬ ДОБАВЛЕН</b>" if is_new else "✅ <b>ДОСТУП ОБНОВЛЁН</b>"
 
     await message.answer(
         f"{status_title}\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        f"• Имя: <b>{saved_name}</b>\n"
-        f"• Логин: <code>{saved_login}</code>\n"
+        f"• Имя: <b>{display_name}</b>\n"
+        f"{panel_status_line}\n"
         f"• Telegram ID: <code>{target_tg_id}</code>\n\n"
         "Данные сохранены в <code>clients.db</code>. "
         "Когда пользователь зайдёт в бот и нажмёт <code>/start</code>, "
@@ -406,6 +530,68 @@ async def on_user_button_click(callback: CallbackQuery, state: FSMContext) -> No
     )
     await callback.answer()
 
+
+
+
+@router.callback_query(F.data.startswith("del_user_ask:"))
+async def on_delete_user_ask(callback: CallbackQuery, state: FSMContext) -> None:
+    if not is_admin_user(callback.from_user.id if callback.from_user else None):
+        await callback.answer("Недостаточно прав", show_alert=True)
+        return
+
+    raw_id = callback.data.split(":", 1)[1]
+    found = get_client_by_id(raw_id)
+    if not found:
+        await callback.answer("Пользователь не найден", show_alert=True)
+        return
+
+    await state.clear()
+    u_name = escape(str(found.get("name") or found.get("login") or f"ID {raw_id}"))
+    u_tg = escape(str(found.get("telegram_id") or "—"))
+    await callback.message.edit_text(
+        f"⚠️ <b>ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"Удалить пользователя <b>{u_name}</b> (TG ID: <code>{u_tg}</code>) из базы <code>clients.db</code>?",
+        reply_markup=build_user_delete_confirm_keyboard(found["id"]),
+        parse_mode="HTML",
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("del_user_yes:"))
+async def on_delete_user_confirm(callback: CallbackQuery, state: FSMContext) -> None:
+    if not is_admin_user(callback.from_user.id if callback.from_user else None):
+        await callback.answer("Недостаточно прав", show_alert=True)
+        return
+
+    raw_id = callback.data.split(":", 1)[1]
+    await state.clear()
+    deleted = delete_client_by_id(raw_id)
+    if not deleted:
+        await callback.answer("Пользователь уже удалён или не найден", show_alert=True)
+        return
+
+    d_name = escape(str(deleted.get("name") or deleted.get("login") or f"ID {raw_id}"))
+    d_tg = escape(str(deleted.get("telegram_id") or "—"))
+    users = list_clients()
+
+    await callback.answer("Пользователь удалён")
+    if not users:
+        await callback.message.edit_text(
+            f"🗑 Пользователь <b>{d_name}</b> (TG ID: <code>{d_tg}</code>) удалён из базы.\n"
+            "В базе <code>clients.db</code> больше нет пользователей.",
+            parse_mode="HTML",
+        )
+        return
+
+    await callback.message.edit_text(
+        f"🗑 Пользователь <b>{d_name}</b> (TG ID: <code>{d_tg}</code>) удалён из базы.\n\n"
+        f"👥 <b>ПОЛЬЗОВАТЕЛИ</b> (<code>{len(users)}</code>)\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "Выберите пользователя:",
+        reply_markup=build_users_inline_keyboard(users),
+        parse_mode="HTML",
+    )
 
 @router.callback_query(F.data.startswith("edit_user:"))
 async def on_edit_user_field_click(callback: CallbackQuery, state: FSMContext) -> None:
@@ -488,6 +674,8 @@ async def process_edit_user_value(message: Message, state: FSMContext) -> None:
         return
 
     found = get_client_by_id(client_id)
+    if found:
+        found = await sync_client_login_from_panel(found) or found
     if not found:
         await message.answer("✅ Значение обновлено.")
         return

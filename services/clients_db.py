@@ -468,3 +468,28 @@ def sync_client_profile_from_tg(
             (tg_int,),
         ).fetchone()
         return dict(updated) if updated else None
+
+
+def delete_client_by_id(client_id: int | str) -> dict[str, Any] | None:
+    try:
+        cid = int(client_id)
+    except (TypeError, ValueError):
+        return None
+    ensure_clients_table()
+    ensure_manual_access_table()
+    ensure_access_tracking_table()
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT id, telegram_id, login, name FROM clients WHERE id = ? LIMIT 1",
+            (cid,),
+        ).fetchone()
+        if not row:
+            return None
+        info = dict(row)
+        tg_id = info.get("telegram_id")
+        conn.execute("DELETE FROM clients WHERE id = ?", (cid,))
+        if tg_id is not None:
+            conn.execute("DELETE FROM manual_allowed_users WHERE telegram_id = ?", (tg_id,))
+            conn.execute("DELETE FROM client_access_notify WHERE telegram_id = ?", (tg_id,))
+        conn.commit()
+        return info
