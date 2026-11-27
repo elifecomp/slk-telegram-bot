@@ -1,6 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 GIB_BYTES = 1024 ** 3
+VIP_INBOUND_IDS: list[int] = [1, 2, 3, 5, 9, 11, 12]
 
 TARIFFS: list[dict] = [
     {"key": "mini_50", "name": "Тариф Мини", "short": "Мини • 50 ГБ", "gb": 50},
@@ -8,6 +9,7 @@ TARIFFS: list[dict] = [
     {"key": "ultra_150", "name": "Тариф Ультра", "short": "Ультра • 150 ГБ", "gb": 150},
     {"key": "ultra_200", "name": "Тариф Про 200", "short": "Про 200 • 200 ГБ", "gb": 200},
     {"key": "unlim", "name": "Тариф Безлимитный", "short": "Безлимитный", "gb": 0},
+    {"key": "vip", "name": "Тариф VIP", "short": "VIP • 300 ГБ + RU-обход", "gb": 300},
 ]
 
 TARIFF_BY_KEY: dict[str, dict] = {item["key"]: item for item in TARIFFS}
@@ -43,5 +45,15 @@ def build_tariffs_inline_keyboard() -> InlineKeyboardMarkup:
     ]
     row3 = [
         InlineKeyboardButton(text="♾️ Безлимитный", callback_data="tariff_req:unlim"),
+        InlineKeyboardButton(text="👑 Тариф VIP", callback_data="tariff_vip_info"),
     ]
     return InlineKeyboardMarkup(inline_keyboard=[row1, row2, row3])
+
+
+def build_vip_confirm_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Согласен, запросить VIP", callback_data="tariff_req:vip")],
+            [InlineKeyboardButton(text="◀️ Назад к тарифам", callback_data="tariff_back")],
+        ]
+    )

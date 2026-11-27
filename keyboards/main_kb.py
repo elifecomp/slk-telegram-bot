@@ -13,11 +13,11 @@ def get_main_keyboard() -> ReplyKeyboardMarkup:
         ],
         [
             KeyboardButton(text="Клиенты"),
-            KeyboardButton(text="👥 Пользователи"),
+            KeyboardButton(text="Пользователи"),
         ],
         [
             KeyboardButton(text="Хосты"),
-            KeyboardButton(text="👤 Панель клиента"),
+            KeyboardButton(text="Панель клиента"),
         ],
     ]
     return ReplyKeyboardMarkup(

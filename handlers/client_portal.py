@@ -29,8 +29,8 @@ from services.clients_db import (
 
 router = Router(name="client_portal")
 
-BTN_CLIENT_PANEL = "👤 Панель клиента"
-BTN_USERS_LIST = "👥 Пользователи"
+BTN_CLIENT_PANEL = "Панель клиента"
+BTN_USERS_LIST = "Пользователи"
 BTN_ADD_USER_TG = "➕ Добавить пользователя по ТГ"
 REQUEST_ADD_USER_ID = 3101
 BTN_MY_SUB = "📡 Моя подписка"
@@ -828,14 +828,60 @@ async def _build_subscription_text(uid: int, client_row: dict | None) -> str:
                 if not isinstance(ib, dict):
                     continue
                 ib_num = ib.get("id")
+
+                settings_raw = ib.get("settings")
+                settings_dict = {}
+                if isinstance(settings_raw, dict):
+                    settings_dict = settings_raw
+                elif isinstance(settings_raw, str) and settings_raw.strip():
+                    try:
+                        import json
+                        parsed_s = json.loads(settings_raw)
+                        if isinstance(parsed_s, dict):
+                            settings_dict = parsed_s
+                    except Exception:
+                        pass
+
+                active_client_emails_in_ib: set[str] = set()
+                for c in settings_dict.get("clients") or []:
+                    if isinstance(c, dict):
+                        c_email = str(c.get("email") or "").strip()
+                        if c_email in target_emails:
+                            active_client_emails_in_ib.add(c_email)
+                            matched_email = matched_email or c_email
+                            if not raw_client:
+                                raw_client = dict(c)
+                            if ib_num is not None and str(ib_num) not in linked_inbound_ids:
+                                linked_inbound_ids.append(str(ib_num))
+                                if inbound_id is None:
+                                    inbound_id = ib_num
+                            _ib_title = str(ib.get("remark") or ib.get("tag") or "").strip()
+                            _ib_label = _ib_title if _ib_title else (f"#{ib_num}" if ib_num is not None else "")
+                            if _ib_label and _ib_label not in linked_inbound_names:
+                                linked_inbound_names.append(_ib_label)
+                            if c.get("expiryTime") not in (None, "", 0, "0"):
+                                expiry_candidates.append(c.get("expiryTime"))
+                            if "enable" in c and c.get("enable") is not None:
+                                enable_candidates.append(c.get("enable"))
+                            if c.get("subId") and not sub_id_candidate:
+                                sub_id_candidate = c.get("subId")
+                            for lk in ("totalGB", "total"):
+                                lv = c.get(lk)
+                                if lv not in (None, "", 0, "0"):
+                                    try:
+                                        lf = float(lv)
+                                        if lf > limit_num:
+                                            limit_num = lf
+                                    except (TypeError, ValueError):
+                                        pass
+
                 stats_list = ib.get("clientStats") or []
-                if isinstance(stats_list, list):
+                if isinstance(stats_list, list) and active_client_emails_in_ib:
                     for st in stats_list:
                         if not isinstance(st, dict):
                             continue
                         st_email = str(st.get("email") or "").strip()
-                        if st_email in target_emails:
-                            matched_email = matched_email or st_email
+                        if st_email in active_client_emails_in_ib:
                             found_stats = True
                             try:
                                 up_sum += float(st.get("up") or 0)
@@ -854,55 +900,6 @@ async def _build_subscription_text(uid: int, client_row: dict | None) -> str:
                                             limit_num = lf
                                     except (TypeError, ValueError):
                                         pass
-                            if st.get("expiryTime") not in (None, "", 0, "0"):
-                                expiry_candidates.append(st.get("expiryTime"))
-                            if "enable" in st and st.get("enable") is not None:
-                                enable_candidates.append(st.get("enable"))
-                            if ib_num is not None and str(ib_num) not in linked_inbound_ids:
-                                linked_inbound_ids.append(str(ib_num))
-                                if inbound_id is None:
-                                    inbound_id = ib_num
-                            _ib_title = str(ib.get("remark") or ib.get("tag") or "").strip()
-                            _ib_label = _ib_title if _ib_title else (f"#{ib_num}" if ib_num is not None else "")
-                            if _ib_label and _ib_label not in linked_inbound_names:
-                                linked_inbound_names.append(_ib_label)
-
-                settings_raw = ib.get("settings")
-                settings_dict = {}
-                if isinstance(settings_raw, dict):
-                    settings_dict = settings_raw
-                elif isinstance(settings_raw, str) and settings_raw.strip():
-                    try:
-                        import json
-                        parsed_s = json.loads(settings_raw)
-                        if isinstance(parsed_s, dict):
-                            settings_dict = parsed_s
-                    except Exception:
-                        pass
-
-                for c in settings_dict.get("clients") or []:
-                    if isinstance(c, dict) and str(c.get("email") or "").strip() in target_emails:
-                        if not raw_client:
-                            raw_client = dict(c)
-                        if ib_num is not None and str(ib_num) not in linked_inbound_ids:
-                            linked_inbound_ids.append(str(ib_num))
-                            if inbound_id is None:
-                                inbound_id = ib_num
-                        if c.get("expiryTime") not in (None, "", 0, "0"):
-                            expiry_candidates.append(c.get("expiryTime"))
-                        if "enable" in c and c.get("enable") is not None:
-                            enable_candidates.append(c.get("enable"))
-                        if c.get("subId") and not sub_id_candidate:
-                            sub_id_candidate = c.get("subId")
-                        for lk in ("totalGB", "total"):
-                            lv = c.get(lk)
-                            if lv not in (None, "", 0, "0"):
-                                try:
-                                    lf = float(lv)
-                                    if lf > limit_num:
-                                        limit_num = lf
-                                except (TypeError, ValueError):
-                                    pass
 
     sub_client = profile.get("client") if isinstance(profile.get("client"), dict) else {}
     merged: dict = {}
@@ -1044,7 +1041,10 @@ def build_app_platform_keyboard() -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(text="iPhone", callback_data="client_app:iphone"),
                 InlineKeyboardButton(text="Android", callback_data="client_app:android"),
-            ]
+            ],
+            [
+                InlineKeyboardButton(text="Боты от SLK", callback_data="client_app:bots"),
+            ],
         ]
     )
 
@@ -1094,6 +1094,34 @@ async def on_client_app_platform(callback: CallbackQuery) -> None:
         return
 
     platform = callback.data.split(":", 1)[1]
+    if platform == "bots":
+        await callback.answer("Открываю ботов от SLK")
+        if callback.message:
+            kb = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="Скачивает видео",
+                            url="https://t.me/Slkdownload_bot",
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            text="Игры и цены для PlayStation",
+                            url="https://t.me/slkplay_bot",
+                        )
+                    ],
+                ]
+            )
+            await callback.message.answer(
+                "🤖 <b>БОТЫ ОТ SLK</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━\n"
+                "Выберите нужного бота — он откроется сразу по нажатию:",
+                reply_markup=kb,
+                parse_mode="HTML",
+            )
+        return
+
     if platform == "iphone":
         await callback.answer("Открываю ссылку для iPhone")
         if callback.message:
@@ -1382,6 +1410,44 @@ async def handle_open_tariffs(message: Message) -> None:
     )
 
 
+@router.callback_query(F.data == "tariff_vip_info")
+async def handle_tariff_vip_info(callback: CallbackQuery) -> None:
+    from services.tariff_plans import build_vip_confirm_keyboard
+
+    text = (
+        "👑 <b>ТАРИФ VIP</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "💳 <b>Тариф платный</b> — актуальную стоимость уточняйте у администратора.\n\n"
+        "<b>Что вы получите:</b>\n"
+        "• Все доступные сервера\n"
+        "• RU-обход для мобильной блокировки в белых списках\n"
+        "• Лимит трафика: <b>300 ГБ</b>\n\n"
+        "Если согласны с условиями, нажмите кнопку ниже для отправки заявки:"
+    )
+    if callback.message:
+        await callback.message.edit_text(
+            text,
+            reply_markup=build_vip_confirm_keyboard(),
+            parse_mode="HTML",
+        )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "tariff_back")
+async def handle_tariff_back(callback: CallbackQuery) -> None:
+    from services.tariff_plans import build_tariffs_inline_keyboard
+
+    if callback.message:
+        await callback.message.edit_text(
+            "💳 <b>ВЫБОР ТАРИФА</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "Выберите нужный тариф ниже — заявка сразу отправится администратору:",
+            reply_markup=build_tariffs_inline_keyboard(),
+            parse_mode="HTML",
+        )
+    await callback.answer()
+
+
 @router.callback_query(F.data.startswith("tariff_req:"))
 async def handle_tariff_request(callback: CallbackQuery) -> None:
     from config import ADMIN_ID, ADMIN_IDS
@@ -1515,6 +1581,10 @@ async def handle_tariff_decision(callback: CallbackQuery) -> None:
             await callback.answer(f"Ошибка: {last_err or 'не удалось обновить лимит'}", show_alert=True)
             return
 
+        vip_extra_note = ""
+        if key == "vip":
+            vip_extra_note = "\n• Лимит трафика: <b>300 ГБ</b>\n• Инбаунды и RU-обход настраиваются вручную администратором"
+
         try:
             await callback.bot.send_message(
                 chat_id=target_uid,
@@ -1523,6 +1593,7 @@ async def handle_tariff_decision(callback: CallbackQuery) -> None:
                     "━━━━━━━━━━━━━━━━━━━━\n"
                     f"Здравствуйте, <b>{escape(client_name)}</b>!\n\n"
                     f"Ваш запрос на <b>{escape(str(tariff['name']))}</b> одобрен. Лимит трафика в панели обновлён."
+                    f"{vip_extra_note}"
                 ),
                 parse_mode="HTML",
             )
