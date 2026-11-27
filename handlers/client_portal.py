@@ -35,6 +35,7 @@ REQUEST_ADD_USER_ID = 3101
 BTN_MY_SUB = "📡 Моя подписка"
 BTN_APP = "📱 Приложение"
 BTN_BACK_ADMIN = "⬅️ В админ-панель"
+BTN_BROADCAST = "📣 Рассылка"
 
 FIELD_LABELS = {
     "name": "имя",
@@ -47,6 +48,11 @@ FIELD_LABELS = {
 
 class EditClientState(StatesGroup):
     waiting_value = State()
+
+
+class BroadcastState(StatesGroup):
+    waiting_message = State()
+    confirm_send = State()
 
 
 def get_admin_keyboard_with_portal() -> ReplyKeyboardMarkup:
@@ -68,6 +74,7 @@ def get_users_manage_reply_keyboard() -> ReplyKeyboardMarkup:
                     ),
                 )
             ],
+            [KeyboardButton(text=BTN_BROADCAST)],
             [KeyboardButton(text=BTN_BACK_ADMIN)],
         ],
         resize_keyboard=True,
@@ -1093,3 +1100,182 @@ async def on_client_app_platform(callback: CallbackQuery) -> None:
             caption=f"📲 <b>Android ({escape(filename)})</b>",
             parse_mode="HTML",
         )
+
+
+def _collect_broadcast_recipients() -> list[int]:
+    seen: set[int] = set()
+    recipients: list[int] = []
+    for row in list_clients(limit=100000):
+        raw_id = row.get("telegram_id")
+        if raw_id is None:
+            continue
+        try:
+            uid = int(raw_id)
+        except (TypeError, ValueError):
+            continue
+        if uid > 0 and uid not in seen:
+            seen.add(uid)
+            recipients.append(uid)
+    return recipients
+
+
+def _broadcast_confirm_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✅ Отправить всем", callback_data="bcast:send"),
+                InlineKeyboardButton(text="❌ Отмена", callback_data="bcast:cancel"),
+            ]
+        ]
+    )
+
+
+@router.message(F.text == BTN_BROADCAST)
+async def start_broadcast(message: Message, state: FSMContext) -> None:
+    uid = message.from_user.id if message.from_user else None
+    if not is_admin_user(uid):
+        return
+    await state.clear()
+    await state.set_state(BroadcastState.waiting_message)
+    recipients = _collect_broadcast_recipients()
+    prompt = (
+        "📣 <b>РАССЫЛКА ПОЛЬЗОВАТЕЛЯМ</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"Получателей в базе: <b>{len(recipients)}</b>\n\n"
+        "Отправьте одно сообщение для рассылки: текст, фото, видео или файл/документ "
+        "(до 50 МБ — как в обычном чате Telegram).\n"
+        "Для отмены нажмите кнопку «⬅️ В админ-панель»."
+    )
+    await message.answer(
+        prompt,
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=BTN_BACK_ADMIN)]],
+            resize_keyboard=True,
+        ),
+        parse_mode="HTML",
+    )
+
+
+@router.message(BroadcastState.waiting_message)
+async def receive_broadcast_message(message: Message, state: FSMContext) -> None:
+    uid = message.from_user.id if message.from_user else None
+    if not is_admin_user(uid):
+        return
+    if message.text == BTN_BACK_ADMIN:
+        await state.clear()
+        await message.answer(
+            "Рассылка отменена.",
+            reply_markup=get_admin_keyboard_with_portal(),
+        )
+        return
+
+    await state.update_data(
+        bcast_chat_id=message.chat.id,
+        bcast_message_id=message.message_id,
+    )
+    await state.set_state(BroadcastState.confirm_send)
+
+    recipients_count = len(_collect_broadcast_recipients())
+    preview_header = (
+        "👁 <b>ПРЕДПРОСМОТР РАССЫЛКИ</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"Получателей в базе: <b>{recipients_count}</b>\n"
+        "Ниже показан вариант сообщения, который уйдёт пользователям:"
+    )
+    await message.answer(preview_header, parse_mode="HTML")
+    try:
+        await message.copy_to(chat_id=message.chat.id)
+    except Exception as exc:
+        await state.clear()
+        await message.answer(
+            f"❌ Не удалось подготовить предпросмотр: <code>{escape(str(exc))}</code>",
+            reply_markup=get_users_manage_reply_keyboard(),
+            parse_mode="HTML",
+        )
+        return
+
+    await message.answer(
+        "Подтвердите отправку рассылки:",
+        reply_markup=_broadcast_confirm_keyboard(),
+    )
+
+
+@router.callback_query(BroadcastState.confirm_send, F.data == "bcast:cancel")
+async def cancel_broadcast(callback: CallbackQuery, state: FSMContext) -> None:
+    uid = callback.from_user.id if callback.from_user else None
+    if not is_admin_user(uid):
+        await callback.answer("Недостаточно прав", show_alert=True)
+        return
+    await state.clear()
+    await callback.answer("Отменено")
+    if callback.message:
+        await callback.message.answer(
+            "❌ Рассылка отменена.",
+            reply_markup=get_users_manage_reply_keyboard(),
+        )
+
+
+@router.callback_query(BroadcastState.confirm_send, F.data == "bcast:send")
+async def run_broadcast(callback: CallbackQuery, state: FSMContext) -> None:
+    uid = callback.from_user.id if callback.from_user else None
+    if not is_admin_user(uid):
+        await callback.answer("Недостаточно прав", show_alert=True)
+        return
+
+    data = await state.get_data()
+    src_chat_id = data.get("bcast_chat_id")
+    src_message_id = data.get("bcast_message_id")
+    await state.clear()
+    await callback.answer("Запускаю рассылку...")
+
+    if not src_chat_id or not src_message_id or not callback.message:
+        if callback.message:
+            await callback.message.answer(
+                "⚠️ Данные рассылки не найдены. Нажмите «📣 Рассылка» заново.",
+                reply_markup=get_users_manage_reply_keyboard(),
+            )
+        return
+
+    recipients = _collect_broadcast_recipients()
+    sent_count = 0
+    failed_count = 0
+
+    status_msg = await callback.message.answer(
+        f"🚀 Рассылка запущена: <code>0</code> / <code>{len(recipients)}</code>",
+        parse_mode="HTML",
+    )
+
+    for idx, target_uid in enumerate(recipients, start=1):
+        try:
+            await callback.bot.copy_message(
+                chat_id=target_uid,
+                from_chat_id=int(src_chat_id),
+                message_id=int(src_message_id),
+            )
+            sent_count += 1
+        except Exception:
+            failed_count += 1
+
+        if idx % 15 == 0 or idx == len(recipients):
+            try:
+                progress_text = (
+                    f"🚀 Рассылка в процессе: <code>{idx}</code> / <code>{len(recipients)}</code>\n"
+                    f"✅ Доставлено: <b>{sent_count}</b> | ⚠️ Ошибок: <b>{failed_count}</b>"
+                )
+                await status_msg.edit_text(progress_text, parse_mode="HTML")
+            except Exception:
+                pass
+        await asyncio.sleep(0.05)
+
+    summary_text = (
+        "📊 <b>РАССЫЛКА ЗАВЕРШЕНА</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"• Всего в базе: <b>{len(recipients)}</b>\n"
+        f"• Доставлено: <b>{sent_count}</b>\n"
+        f"• Не доставлено: <b>{failed_count}</b>"
+    )
+    await callback.message.answer(
+        summary_text,
+        reply_markup=get_users_manage_reply_keyboard(),
+        parse_mode="HTML",
+    )

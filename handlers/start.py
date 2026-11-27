@@ -54,20 +54,22 @@ CLIENT_START_IMAGE = BASE_DIR / "images" / "06.png"
 async def _send_start_message(
     message: Message,
     text: str,
-    reply_markup,
-    image_path: Path,
+    reply_markup=None,
+    image_path: Path | None = None,
+    parse_mode: str | None = None,
 ) -> None:
-    if image_path.is_file():
+    if image_path is not None and image_path.is_file():
         try:
             await message.answer_photo(
                 photo=FSInputFile(str(image_path)),
                 caption=text,
                 reply_markup=reply_markup,
+                parse_mode=parse_mode,
             )
             return
         except Exception:
             pass
-    await message.answer(text, reply_markup=reply_markup)
+    await message.answer(text, reply_markup=reply_markup, parse_mode=parse_mode)
 
 
 @router.message(CommandStart())
