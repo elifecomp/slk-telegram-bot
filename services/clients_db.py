@@ -160,7 +160,7 @@ def is_admin_user(user_id: int | str | None) -> bool:
     return uid in parsed_ids
 
 
-ALLOWED_EDIT_FIELDS = {"name", "phone", "city", "birthday"}
+ALLOWED_EDIT_FIELDS = {"name", "phone", "city", "birthday", "login"}
 
 
 def update_client_field(client_id: int | str, field: str, value: str) -> bool:

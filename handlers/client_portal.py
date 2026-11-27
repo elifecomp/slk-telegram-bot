@@ -41,6 +41,7 @@ FIELD_LABELS = {
     "phone": "номер телефона",
     "city": "город",
     "birthday": "дату рождения (например, 02.03.1983)",
+    "login": "логин (email в панели 3X-UI)",
 }
 
 
@@ -116,6 +117,9 @@ def build_user_card_keyboard(client_id: int | str) -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(text="Изменить город", callback_data=f"edit_user:{client_id}:city"),
                 InlineKeyboardButton(text="Изменить рождение", callback_data=f"edit_user:{client_id}:birthday"),
+            ],
+            [
+                InlineKeyboardButton(text="Сменить логин", callback_data=f"edit_user:{client_id}:login"),
             ],
             [
                 InlineKeyboardButton(text="🗑 Удалить из базы", callback_data=f"del_user_ask:{client_id}"),
@@ -669,12 +673,34 @@ async def process_edit_user_value(message: Message, state: FSMContext) -> None:
     field = data.get("field")
     await state.clear()
 
-    if not client_id or not field or not update_client_field(client_id, field, new_val):
+    if not client_id or not field:
+        await message.answer("⚠️ Не удалось обновить данные в базе.")
+        return
+
+    if field == "login":
+        try:
+            from services.clients_db import _connect, ensure_clients_table
+            ensure_clients_table()
+            with _connect() as conn:
+                dup = conn.execute(
+                    "SELECT id FROM clients WHERE login = ? AND id != ? LIMIT 1",
+                    (new_val, int(client_id)),
+                ).fetchone()
+            if dup:
+                await message.answer(
+                    f"⚠️ Логин <code>{escape(new_val)}</code> уже закреплён за другим пользователем.",
+                    parse_mode="HTML",
+                )
+                return
+        except Exception:
+            pass
+
+    if not update_client_field(client_id, field, new_val):
         await message.answer("⚠️ Не удалось обновить данные в базе.")
         return
 
     found = get_client_by_id(client_id)
-    if found:
+    if found and field != "login":
         found = await sync_client_login_from_panel(found) or found
     if not found:
         await message.answer("✅ Значение обновлено.")
@@ -736,6 +762,7 @@ async def _build_subscription_text(uid: int, client_row: dict | None) -> str:
     inbound_id = None
     matched_email: str | None = None
     linked_inbound_ids: list[str] = []
+    linked_inbound_names: list[str] = []
 
     up_sum = 0.0
     down_sum = 0.0
@@ -826,6 +853,10 @@ async def _build_subscription_text(uid: int, client_row: dict | None) -> str:
                                 linked_inbound_ids.append(str(ib_num))
                                 if inbound_id is None:
                                     inbound_id = ib_num
+                            _ib_title = str(ib.get("remark") or ib.get("tag") or "").strip()
+                            _ib_label = _ib_title if _ib_title else (f"#{ib_num}" if ib_num is not None else "")
+                            if _ib_label and _ib_label not in linked_inbound_names:
+                                linked_inbound_names.append(_ib_label)
 
                 settings_raw = ib.get("settings")
                 settings_dict = {}
@@ -939,8 +970,14 @@ async def _build_subscription_text(uid: int, client_row: dict | None) -> str:
     if remain_str != "—":
         lines.append(f"• Остаток трафика: <code>{remain_str}</code>")
     lines.append(f"• Срок действия: <code>{escape(expiry_str)}</code>")
-    if inbound_id is not None:
-        lines.append(f"• Входящий (Inbound): <code>#{escape(str(inbound_id))}</code>")
+    if linked_inbound_names:
+        if len(linked_inbound_names) == 1:
+            lines.append(f"• Входящие (Inbounds): <b>{escape(linked_inbound_names[0])}</b>")
+        else:
+            joined_names = ", ".join(f"<b>{escape(n)}</b>" for n in linked_inbound_names)
+            lines.append(f"• Входящие (Inbounds) [<code>{len(linked_inbound_names)}</code>]: {joined_names}")
+    elif inbound_id is not None:
+        lines.append(f"• Входящие (Inbounds): <code>#{escape(str(inbound_id))}</code>")
 
     sub_id = sub_id_candidate or merged.get("subId") or profile.get("subId")
     if sub_id:
