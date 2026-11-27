@@ -16,6 +16,7 @@ from aiogram.types import (
 )
 
 from keyboards.main_kb import get_main_keyboard
+from services.tariff_plans import build_tariffs_inline_keyboard, resolve_tariff_name
 from services.clients_db import (
     delete_client_by_id,
     get_client_by_id,
@@ -34,6 +35,7 @@ BTN_ADD_USER_TG = "➕ Добавить пользователя по ТГ"
 REQUEST_ADD_USER_ID = 3101
 BTN_MY_SUB = "📡 Моя подписка"
 BTN_APP = "📱 Приложение"
+BTN_TARIFFS = "💳 Тарифы"
 BTN_BACK_ADMIN = "⬅️ В админ-панель"
 BTN_BROADCAST = "📣 Рассылка"
 
@@ -83,7 +85,7 @@ def get_users_manage_reply_keyboard() -> ReplyKeyboardMarkup:
 
 def get_client_reply_keyboard(include_back_admin: bool = False) -> ReplyKeyboardMarkup:
     rows: list[list[KeyboardButton]] = [
-        [KeyboardButton(text=BTN_MY_SUB), KeyboardButton(text=BTN_APP)],
+        [KeyboardButton(text=BTN_MY_SUB), KeyboardButton(text=BTN_TARIFFS), KeyboardButton(text=BTN_APP)],
     ]
     if include_back_admin:
         rows.append([KeyboardButton(text=BTN_BACK_ADMIN)])
@@ -989,15 +991,20 @@ async def _build_subscription_text(uid: int, client_row: dict | None) -> str:
     )
     expiry_str = _fmt_expiry(expiry_raw)
 
+    tariff_title = resolve_tariff_name(limit_num)
     lines = [
         "📡 <b>МОЯ ПОДПИСКА</b>",
         "━━━━━━━━━━━━━━━━━━━━",
         f"• Клиент: <b>{name}</b>",
         f"• Аккаунт (email): <code>{email_disp}</code>",
         f"• Статус: <code>{status_text}</code>",
+    ]
+    if tariff_title:
+        lines.append(f"• Тариф: <b>{escape(tariff_title)}</b>")
+    lines.extend([
         f"• Использовано: <code>{used_str}</code>",
         f"• Лимит трафика: <code>{limit_str}</code>",
-    ]
+    ])
     if remain_str != "—":
         lines.append(f"• Остаток трафика: <code>{remain_str}</code>")
     lines.append(f"• Срок действия: <code>{escape(expiry_str)}</code>")
@@ -1359,3 +1366,196 @@ async def run_broadcast(callback: CallbackQuery, state: FSMContext) -> None:
         reply_markup=get_users_manage_reply_keyboard(),
         parse_mode="HTML",
     )
+
+
+@router.message(F.text == BTN_TARIFFS)
+async def handle_open_tariffs(message: Message) -> None:
+    uid = message.from_user.id if message.from_user else None
+    if not uid:
+        return
+    await message.answer(
+        "💳 <b>ВЫБОР ТАРИФА</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "Выберите нужный тариф ниже — заявка сразу отправится администратору:",
+        reply_markup=build_tariffs_inline_keyboard(),
+        parse_mode="HTML",
+    )
+
+
+@router.callback_query(F.data.startswith("tariff_req:"))
+async def handle_tariff_request(callback: CallbackQuery) -> None:
+    from config import ADMIN_ID, ADMIN_IDS
+    from services.tariff_plans import TARIFF_BY_KEY
+
+    key = (callback.data or "").split(":", 1)[-1].strip()
+    tariff = TARIFF_BY_KEY.get(key)
+    if not tariff:
+        await callback.answer("Тариф не найден", show_alert=True)
+        return
+
+    user = callback.from_user
+    uid = user.id if user else 0
+    db_client = get_client_by_tg_id(uid) if uid else None
+    client_name = (
+        (db_client or {}).get("name")
+        or (user.full_name if user else "")
+        or f"ID {uid}"
+    )
+    login_val = str((db_client or {}).get("login") or "").strip()
+    login2_val = str((db_client or {}).get("login2") or "").strip()
+    logins = [x for x in (login_val, login2_val) if x]
+    logins_disp = ", ".join(logins) if logins else "—"
+    username_str = f"@{user.username}" if (user and user.username) else "—"
+
+    admin_text = (
+        "📩 <b>ЗАПРОС НА СМЕНУ ТАРИФА</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"• Клиент: <b>{escape(str(client_name))}</b>\n"
+        f"• Логин: <code>{escape(logins_disp)}</code>\n"
+        f"• Telegram ID: <code>{uid}</code> ({escape(username_str)})\n"
+        f"• Желаемый тариф: <b>{escape(str(tariff['name']))}</b> ({escape(str(tariff['short']))})"
+    )
+
+    decision_kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✅ Одобрить",
+                    callback_data=f"tariff_dec:ok:{uid}:{key}",
+                ),
+                InlineKeyboardButton(
+                    text="❌ Отказать",
+                    callback_data=f"tariff_dec:no:{uid}:{key}",
+                ),
+            ]
+        ]
+    )
+
+    targets: set[int] = set(ADMIN_IDS or set())
+    if ADMIN_ID:
+        targets.add(int(ADMIN_ID))
+
+    sent_any = False
+    for admin_id in targets:
+        try:
+            await callback.bot.send_message(
+                chat_id=admin_id,
+                text=admin_text,
+                reply_markup=decision_kb,
+                parse_mode="HTML",
+            )
+            sent_any = True
+        except Exception:
+            pass
+
+    if sent_any:
+        await callback.answer("✅ Запрос отправлен администратору", show_alert=False)
+        if callback.message:
+            await callback.message.edit_text(
+                f"✅ Запрос на <b>{escape(str(tariff['name']))}</b> отправлен администратору.",
+                parse_mode="HTML",
+            )
+    else:
+        await callback.answer("⚠️ Не удалось отправить запрос администратору", show_alert=True)
+
+
+@router.callback_query(F.data.startswith("tariff_dec:"))
+async def handle_tariff_decision(callback: CallbackQuery) -> None:
+    actor_id = callback.from_user.id if callback.from_user else None
+    if not is_admin_user(actor_id):
+        await callback.answer("Доступ запрещён", show_alert=True)
+        return
+
+    parts = (callback.data or "").split(":")
+    if len(parts) != 4:
+        await callback.answer("Некорректные данные", show_alert=True)
+        return
+
+    _, action, raw_uid, key = parts
+    try:
+        target_uid = int(raw_uid)
+    except ValueError:
+        await callback.answer("Некорректный ID клиента", show_alert=True)
+        return
+
+    from services.client_edit_service import apply_set_limit_gb
+    from services.tariff_plans import TARIFF_BY_KEY
+
+    tariff = TARIFF_BY_KEY.get(key)
+    if not tariff:
+        await callback.answer("Тариф не найден", show_alert=True)
+        return
+
+    db_client = get_client_by_tg_id(target_uid) or {}
+    client_name = str(db_client.get("name") or f"ID {target_uid}")
+    logins = [
+        str(db_client.get("login") or "").strip(),
+        str(db_client.get("login2") or "").strip(),
+    ]
+    logins = [x for x in logins if x]
+
+    base_text = callback.message.html_text if (callback.message and callback.message.html_text) else ""
+
+    if action == "ok":
+        if not logins:
+            await callback.answer("У клиента не указан логин в панели", show_alert=True)
+            return
+
+        gb_val = float(tariff.get("gb") or 0)
+        applied_any = False
+        last_err = ""
+        for lg in logins:
+            ok, err = await apply_set_limit_gb(lg, gb_val)
+            if ok:
+                applied_any = True
+            else:
+                last_err = err
+
+        if not applied_any:
+            await callback.answer(f"Ошибка: {last_err or 'не удалось обновить лимит'}", show_alert=True)
+            return
+
+        try:
+            await callback.bot.send_message(
+                chat_id=target_uid,
+                text=(
+                    "✅ <b>ЗАЯВКА ОДОБРЕНА</b>\n"
+                    "━━━━━━━━━━━━━━━━━━━━\n"
+                    f"Здравствуйте, <b>{escape(client_name)}</b>!\n\n"
+                    f"Ваш запрос на <b>{escape(str(tariff['name']))}</b> одобрен. Лимит трафика в панели обновлён."
+                ),
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
+
+        await callback.answer("✅ Тариф одобрен и применён", show_alert=False)
+        if callback.message:
+            await callback.message.edit_text(
+                f"{base_text}\n\n✅ <b>Одобрено</b> (применён: <b>{escape(str(tariff['name']))}</b>)",
+                parse_mode="HTML",
+            )
+
+    elif action == "no":
+        reject_card = (
+            "❌ <b>ЗАЯВКА ОТКЛОНЕНА</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            f"Здравствуйте, <b>{escape(client_name)}</b>!\n\n"
+            f"Запрошенный тариф: <b>{escape(str(tariff['name']))}</b>\n"
+            "Простите, данный тариф вам не доступен."
+        )
+        try:
+            await callback.bot.send_message(
+                chat_id=target_uid,
+                text=reject_card,
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
+
+        await callback.answer("❌ Запрос отклонён", show_alert=False)
+        if callback.message:
+            await callback.message.edit_text(
+                f"{base_text}\n\n❌ <b>Отказано</b>",
+                parse_mode="HTML",
+            )

@@ -29,6 +29,26 @@ def _extract_client_uuid_str(client_obj: dict) -> str:
     return "" if raw_id is None else str(raw_id)
 
 
+def _normalize_allowed_ips(val) -> list[str]:
+    if isinstance(val, list):
+        return [str(x).strip() for x in val if x is not None and str(x).strip()]
+    if isinstance(val, (tuple, set)):
+        return [str(x).strip() for x in val if x is not None and str(x).strip()]
+    if isinstance(val, str):
+        s = val.strip()
+        if not s:
+            return []
+        if s.startswith("["):
+            try:
+                parsed = json.loads(s)
+                if isinstance(parsed, list):
+                    return [str(x).strip() for x in parsed if x is not None and str(x).strip()]
+            except Exception:
+                pass
+        return [part.strip() for part in s.replace(";", ",").split(",") if part.strip()]
+    return []
+
+
 def _build_clean_client_payload(raw_client: dict, email: str, updates: dict) -> dict:
     """Формирует полный JSON-объект клиента для POST /clients/update/{email}."""
     payload = dict(raw_client) if isinstance(raw_client, dict) else {}
@@ -36,6 +56,8 @@ def _build_clean_client_payload(raw_client: dict, email: str, updates: dict) -> 
 
     for k, v in updates.items():
         payload[k] = v
+
+    payload["allowedIPs"] = _normalize_allowed_ips(payload.get("allowedIPs"))
 
     uuid_str = _extract_client_uuid_str(payload)
     if uuid_str:
