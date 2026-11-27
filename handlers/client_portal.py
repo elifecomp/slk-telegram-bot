@@ -970,14 +970,15 @@ async def _build_subscription_text(uid: int, client_row: dict | None) -> str:
     if remain_str != "—":
         lines.append(f"• Остаток трафика: <code>{remain_str}</code>")
     lines.append(f"• Срок действия: <code>{escape(expiry_str)}</code>")
-    if linked_inbound_names:
-        if len(linked_inbound_names) == 1:
-            lines.append(f"• Входящие (Inbounds): <b>{escape(linked_inbound_names[0])}</b>")
-        else:
-            joined_names = ", ".join(f"<b>{escape(n)}</b>" for n in linked_inbound_names)
-            lines.append(f"• Входящие (Inbounds) [<code>{len(linked_inbound_names)}</code>]: {joined_names}")
-    elif inbound_id is not None:
-        lines.append(f"• Входящие (Inbounds): <code>#{escape(str(inbound_id))}</code>")
+    server_items = [escape(str(n).strip()) for n in linked_inbound_names if str(n).strip()]
+    if not server_items and inbound_id is not None:
+        server_items = [f"#{escape(str(inbound_id))}"]
+
+    if server_items:
+        lines.append("• Ваши сервера:")
+        for idx, srv in enumerate(server_items):
+            suffix = "," if idx < len(server_items) - 1 else ""
+            lines.append(f"<b>{srv}</b>{suffix}")
 
     sub_id = sub_id_candidate or merged.get("subId") or profile.get("subId")
     if sub_id:
