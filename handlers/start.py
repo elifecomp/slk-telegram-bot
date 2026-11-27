@@ -1,7 +1,8 @@
+from pathlib import Path
 from html import escape
 from aiogram import Router
 from aiogram.filters import CommandStart
-from aiogram.types import Message
+from aiogram.types import FSInputFile, Message
 
 from config import ADMIN_ID, ADMIN_IDS
 from handlers.client_portal import (
@@ -44,6 +45,31 @@ async def notify_admin_new_user(bot, message: Message, is_new: bool) -> None:
         pass
 
 
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+ADMIN_START_IMAGE = BASE_DIR / "images" / "05.png"
+CLIENT_START_IMAGE = BASE_DIR / "images" / "06.png"
+
+
+async def _send_start_message(
+    message: Message,
+    text: str,
+    reply_markup,
+    image_path: Path,
+) -> None:
+    if image_path.is_file():
+        try:
+            await message.answer_photo(
+                photo=FSInputFile(str(image_path)),
+                caption=text,
+                reply_markup=reply_markup,
+            )
+            return
+        except Exception:
+            pass
+    await message.answer(text, reply_markup=reply_markup)
+
+
 @router.message(CommandStart())
 async def cmd_start(message: Message):
     if not message.from_user:
@@ -51,9 +77,11 @@ async def cmd_start(message: Message):
     uid = message.from_user.id
 
     if is_admin_user(uid):
-        await message.answer(
+        await _send_start_message(
+            message,
             "Добро Пожаловать\nSLK Remastered",
             reply_markup=get_admin_keyboard_with_portal(),
+            image_path=ADMIN_START_IMAGE,
         )
         return
 
@@ -76,15 +104,22 @@ async def cmd_start(message: Message):
 
     if has_manual_user_access(uid) or await has_panel_access(uid, force_refresh=False):
         mark_access_notified(uid, notified=True)
+        if CLIENT_START_IMAGE.is_file():
+            try:
+                await message.answer_photo(photo=FSInputFile(str(CLIENT_START_IMAGE)))
+            except Exception:
+                pass
         await send_client_menu(message, client_name=client_name, is_preview=False)
         return
 
     await notify_admin_new_user(message.bot, message, is_new=is_new)
-    await message.answer(
+    await _send_start_message(
+        message,
         "⏳ <b>ОЖИДАНИЕ ДОСТУПА</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         f"Ваш Telegram ID: <code>{uid}</code>\n"
         "Вы добавлены в базу. Как только администратор привяжет ваш ID в панели, "
         "вам придёт уведомление и откроется меню клиента.",
         parse_mode="HTML",
+        image_path=CLIENT_START_IMAGE,
     )
