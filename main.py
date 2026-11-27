@@ -7,6 +7,8 @@ from handlers.client_portal import get_client_reply_keyboard
 from services.clients_db import list_unnotified_clients, mark_access_notified
 from services.panel_tg_access import get_panel_tg_ids
 from services.panel_backup import daily_backup_loop
+from services.traffic_exhausted_watcher import watch_exhausted_traffic_loop
+from services.subscription_status_watcher import watch_subscription_status_loop
 
 
 async def watch_panel_access_loop(bot: Bot, interval_seconds: int = 30) -> None:
@@ -64,13 +66,19 @@ async def main():
 
     watcher_task = asyncio.create_task(watch_panel_access_loop(bot, interval_seconds=30))
     backup_task = asyncio.create_task(daily_backup_loop(bot))
+    traffic_task = asyncio.create_task(watch_exhausted_traffic_loop(bot, interval_seconds=120))
+    sub_status_task = asyncio.create_task(watch_subscription_status_loop(bot, interval_seconds=60))
     try:
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot)
     finally:
         watcher_task.cancel()
         backup_task.cancel()
-        await asyncio.gather(watcher_task, backup_task, return_exceptions=True)
+        traffic_task.cancel()
+        sub_status_task.cancel()
+        await asyncio.gather(watcher_task, backup_task,
+            traffic_task,
+            sub_status_task, return_exceptions=True)
 
 
 if __name__ == "__main__":

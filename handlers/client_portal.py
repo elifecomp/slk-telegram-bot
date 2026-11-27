@@ -940,15 +940,39 @@ async def _build_subscription_text(uid: int, client_row: dict | None) -> str:
     name = escape(str((client_row or {}).get("name") or merged.get("comment") or merged.get("email") or f"ID {uid}"))
     email_disp = escape(str(matched_email or merged.get("email") or "—"))
 
-    if enable_candidates:
-        enabled_raw = any(bool(x) for x in enable_candidates)
-    else:
-        enabled_raw = merged.get("enable")
+    def _parse_enable_flag(val) -> bool | None:
+        if val is None:
+            return None
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, (int, float)):
+            return bool(val)
+        if isinstance(val, str):
+            low = val.strip().lower()
+            if low in ("true", "1", "yes", "on", "enabled", "active"):
+                return True
+            if low in ("false", "0", "no", "off", "disabled", "inactive"):
+                return False
+        return bool(val)
+
+    enabled_raw = None
+    for candidate_source in (sub_client, raw_client, merged):
+        if isinstance(candidate_source, dict) and "enable" in candidate_source:
+            parsed = _parse_enable_flag(candidate_source.get("enable"))
+            if parsed is not None:
+                enabled_raw = parsed
+                break
+
+    if enabled_raw is None and enable_candidates:
+        parsed_list = [_parse_enable_flag(x) for x in enable_candidates]
+        parsed_list = [x for x in parsed_list if x is not None]
+        if parsed_list:
+            enabled_raw = any(parsed_list)
 
     if enabled_raw is None:
         status_text = "🟢 Активна" if (merged or found_stats or (client_row or {}).get("is_active", 1)) else "⚪ Неактивна"
     else:
-        status_text = "🟢 Активна" if bool(enabled_raw) else "🔴 Отключена"
+        status_text = "🟢 Активна" if enabled_raw else "🔴 Отключена"
 
     used_total = up_sum + down_sum
     used_str = _fmt_bytes(used_total) if (found_stats or used_total > 0) else "—"
@@ -1119,6 +1143,37 @@ def _collect_broadcast_recipients() -> list[int]:
     return recipients
 
 
+def _build_broadcast_card_text(body: str, sender_label: str = "Администрация SLK", max_len: int = 4096) -> str:
+    clean_body = (body or "").strip()
+    header = "📣 <b>СООБЩЕНИЕ ОТ SLK</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+    footer = f"\n━━━━━━━━━━━━━━━━━━━━\n<i>От: {escape(sender_label)}</i>"
+    available = max_len - len(header) - len(footer)
+    if available < 20:
+        return (header + escape(clean_body))[:max_len]
+    if len(clean_body) > available:
+        clean_body = clean_body[: max(0, available - 1)] + "…"
+    return f"{header}{escape(clean_body)}{footer}"
+
+
+async def _send_broadcast_card(bot, chat_id: int, src_chat_id: int, src_message_id: int, body: str, has_media: bool, sender_label: str = "Администрация SLK") -> None:
+    if has_media:
+        caption_html = _build_broadcast_card_text(body, sender_label=sender_label, max_len=1024)
+        await bot.copy_message(
+            chat_id=chat_id,
+            from_chat_id=src_chat_id,
+            message_id=src_message_id,
+            caption=caption_html,
+            parse_mode="HTML",
+        )
+    else:
+        card_html = _build_broadcast_card_text(body, sender_label=sender_label, max_len=4096)
+        await bot.send_message(
+            chat_id=chat_id,
+            text=card_html,
+            parse_mode="HTML",
+        )
+
+
 def _broadcast_confirm_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -1169,9 +1224,19 @@ async def receive_broadcast_message(message: Message, state: FSMContext) -> None
         )
         return
 
+    raw_body = message.text if message.text is not None else (message.caption or "")
+    has_media = message.text is None
+    sender_label = (
+        message.from_user.full_name.strip()
+        if message.from_user and message.from_user.full_name
+        else "Администрация SLK"
+    )
     await state.update_data(
         bcast_chat_id=message.chat.id,
         bcast_message_id=message.message_id,
+        bcast_body=raw_body,
+        bcast_has_media=has_media,
+        bcast_sender_label=sender_label,
     )
     await state.set_state(BroadcastState.confirm_send)
 
@@ -1180,11 +1245,19 @@ async def receive_broadcast_message(message: Message, state: FSMContext) -> None
         "👁 <b>ПРЕДПРОСМОТР РАССЫЛКИ</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         f"Получателей в базе: <b>{recipients_count}</b>\n"
-        "Ниже показан вариант сообщения, который уйдёт пользователям:"
+        "Ниже показана карточка, которая придёт пользователям:"
     )
     await message.answer(preview_header, parse_mode="HTML")
     try:
-        await message.copy_to(chat_id=message.chat.id)
+        await _send_broadcast_card(
+            bot=message.bot,
+            chat_id=message.chat.id,
+            src_chat_id=message.chat.id,
+            src_message_id=message.message_id,
+            body=raw_body,
+            has_media=has_media,
+            sender_label=sender_label,
+        )
     except Exception as exc:
         await state.clear()
         await message.answer(
@@ -1225,6 +1298,9 @@ async def run_broadcast(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     src_chat_id = data.get("bcast_chat_id")
     src_message_id = data.get("bcast_message_id")
+    bcast_body = data.get("bcast_body", "")
+    bcast_has_media = bool(data.get("bcast_has_media", False))
+    bcast_sender_label = data.get("bcast_sender_label") or "Администрация SLK"
     await state.clear()
     await callback.answer("Запускаю рассылку...")
 
@@ -1247,10 +1323,14 @@ async def run_broadcast(callback: CallbackQuery, state: FSMContext) -> None:
 
     for idx, target_uid in enumerate(recipients, start=1):
         try:
-            await callback.bot.copy_message(
+            await _send_broadcast_card(
+                bot=callback.bot,
                 chat_id=target_uid,
-                from_chat_id=int(src_chat_id),
-                message_id=int(src_message_id),
+                src_chat_id=int(src_chat_id),
+                src_message_id=int(src_message_id),
+                body=str(bcast_body),
+                has_media=bcast_has_media,
+                sender_label=str(bcast_sender_label),
             )
             sent_count += 1
         except Exception:
