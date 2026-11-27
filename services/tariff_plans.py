@@ -32,7 +32,7 @@ def resolve_tariff_name(limit_bytes: float | int | None) -> str | None:
 
 
 def build_tariffs_inline_keyboard() -> InlineKeyboardMarkup:
-    """Строит инлайн-клавиатуру тарифов аккуратно в 2 ряда."""
+    """Строит инлайн-клавиатуру тарифов сеткой по 2 кнопки в ряд."""
     row1 = [
         InlineKeyboardButton(text="🔹 Мини (50 ГБ)", callback_data="tariff_req:mini_50"),
         InlineKeyboardButton(text="🔸 Стандарт (100 ГБ)", callback_data="tariff_req:std_100"),
@@ -40,6 +40,8 @@ def build_tariffs_inline_keyboard() -> InlineKeyboardMarkup:
     row2 = [
         InlineKeyboardButton(text="💎 Ультра (150 ГБ)", callback_data="tariff_req:ultra_150"),
         InlineKeyboardButton(text="👑 Про 200 (200 ГБ)", callback_data="tariff_req:ultra_200"),
+    ]
+    row3 = [
         InlineKeyboardButton(text="♾️ Безлимитный", callback_data="tariff_req:unlim"),
     ]
-    return InlineKeyboardMarkup(inline_keyboard=[row1, row2])
+    return InlineKeyboardMarkup(inline_keyboard=[row1, row2, row3])

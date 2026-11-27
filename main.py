@@ -10,6 +10,8 @@ from services.panel_backup import daily_backup_loop
 from services.traffic_exhausted_watcher import watch_exhausted_traffic_loop
 from services.subscription_status_watcher import watch_subscription_status_loop
 from services.tariff_change_watcher import watch_tariff_change_loop
+from services.expiry_reminder_watcher import watch_expiry_reminder_loop
+from services.low_traffic_watcher import watch_low_traffic_loop
 
 
 async def watch_panel_access_loop(bot: Bot, interval_seconds: int = 30) -> None:
@@ -70,6 +72,8 @@ async def main():
     traffic_task = asyncio.create_task(watch_exhausted_traffic_loop(bot, interval_seconds=120))
     sub_status_task = asyncio.create_task(watch_subscription_status_loop(bot, interval_seconds=60))
     tariff_task = asyncio.create_task(watch_tariff_change_loop(bot, interval_seconds=60))
+    expiry_task = asyncio.create_task(watch_expiry_reminder_loop(bot, interval_seconds=300))
+    low_traffic_task = asyncio.create_task(watch_low_traffic_loop(bot, interval_seconds=60))
     try:
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot)
@@ -79,10 +83,14 @@ async def main():
         traffic_task.cancel()
         sub_status_task.cancel()
         tariff_task.cancel()
+        expiry_task.cancel()
+        low_traffic_task.cancel()
         await asyncio.gather(watcher_task, backup_task,
             traffic_task,
             sub_status_task,
-            tariff_task, return_exceptions=True)
+            tariff_task,
+            expiry_task,
+            low_traffic_task, return_exceptions=True)
 
 
 if __name__ == "__main__":
