@@ -116,18 +116,18 @@ prompt_optional_token() {
 prompt_optional_admin_id() {
     local val=""
     while true; do
-        read -r -p "  ${BOLD}Ваш Telegram ID администратора [Enter — пропустить]:${NC} " val
-        val="$(echo "$val" | xargs)"
+        read -r -p "  ${BOLD}Telegram ID администраторов (можно через запятую) [Enter — пропустить]:${NC} " val
+        val="$(echo "$val" | tr -d '[:space:]')"
         if [ -z "$val" ]; then
             ADMIN_ID=""
             warn_msg "Telegram ID пропущен — добавите его позже в .env"
             break
         fi
-        if [[ "$val" =~ ^-?[0-9]+$ ]]; then
+        if [[ "$val" =~ ^-?[0-9]+(,-?[0-9]+)*$ ]]; then
             ADMIN_ID="$val"
             break
         fi
-        warn_msg "Введите числовой Telegram ID или нажмите Enter для пропуска."
+        warn_msg "Введите числовой ID или список ID через запятую (например: 123456789,987654321) либо нажмите Enter."
     done
 }
 
@@ -193,16 +193,13 @@ main() {
         ok_msg "Каталог проекта: ${TARGET_DIR}"
     fi
 
-    rm -f "${TARGET_DIR}"/*.db "${TARGET_DIR}"/*.db-wal "${TARGET_DIR}"/*.db-shm "${TARGET_DIR}"/*.sqlite* 2>/dev/null || true
-    ok_msg "Чистая база клиентов подготовлена (создастся автоматически при первом запуске)"
-
     if command -v apt-get >/dev/null 2>&1; then
         need_apt=0
         python3 -m venv --help >/dev/null 2>&1 || need_apt=1
         python3 -m pip --version >/dev/null 2>&1 || need_apt=1
         if [ "$need_apt" -eq 1 ]; then
             run_with_spinner "Установка python3-venv и python3-pip" bash -c "
-                apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3 python3-venv python3-pip curl
+                apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3 python3-venv python3-pip curl ca-certificates
             "
         else
             ok_msg "Python3, venv и pip уже установлены"
@@ -233,10 +230,10 @@ main() {
 
     if [ -s "${TARGET_DIR}/requirements.txt" ]; then
         run_with_spinner "Установка зависимостей из requirements.txt" \
-            "${TARGET_DIR}/venv/bin/pip" install --upgrade --quiet -r "${TARGET_DIR}/requirements.txt"
+            "${TARGET_DIR}/venv/bin/pip" install --quiet -r "${TARGET_DIR}/requirements.txt"
     else
         run_with_spinner "Установка aiogram и aiohttp" \
-            "${TARGET_DIR}/venv/bin/pip" install --upgrade --quiet aiogram aiohttp
+            "${TARGET_DIR}/venv/bin/pip" install --quiet "aiogram>=3.4,<3.25" "pydantic>=2.0,<2.12" "aiohttp>=3.9,<4.0" "python-dotenv>=1.0,<2.0"
     fi
 
     progress_bar 4 6 "Проверка кода и модулей"
@@ -279,7 +276,7 @@ SYSTEMD_EOF
     echo -e "  • Директория:  ${CYAN}${TARGET_DIR}${NC}"
     echo -e "  • Админ ID:    ${CYAN}${ADMIN_ID:-не задан (добавьте в .env)}${NC}"
     echo -e "  • Панель URL:  ${CYAN}${PANEL_URL}${NC}"
-    echo -e "  • База данных: ${CYAN}создастся автоматически при первом запуске / заходе${NC}"
+    echo -e "  • База данных: ${CYAN}создаётся / сохраняется в ${TARGET_DIR}${NC}"
     show_service_status
 }
 
