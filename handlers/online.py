@@ -1,7 +1,7 @@
 import logging
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
-from config import ADMIN_ID
+from config import ADMIN_ID, ADMIN_IDS
 from keyboards.online_kb import build_client_detail_keyboard
 from services.online_cache import get_cached_client
 from services.online_client_details import get_online_client_detail_report
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 @router.message(F.text == "Онлайн")
 async def handle_online(message: Message):
-    if message.from_user.id != ADMIN_ID:
+    if message.from_user.id not in ADMIN_IDS:
         return
 
     wait_msg = await message.answer("⏳ Запрашиваю онлайн-клиентов из панели...")
@@ -30,7 +30,7 @@ async def handle_online(message: Message):
 
 @router.callback_query(F.data.startswith("onl_ref:"))
 async def handle_online_refresh(callback: CallbackQuery):
-    if callback.from_user.id != ADMIN_ID:
+    if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("Доступ запрещён", show_alert=True)
         return
 
@@ -50,7 +50,7 @@ async def handle_online_refresh(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("onl_c:"))
 async def handle_online_client_click(callback: CallbackQuery):
-    if callback.from_user.id != ADMIN_ID:
+    if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("Доступ запрещён", show_alert=True)
         return
 

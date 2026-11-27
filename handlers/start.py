@@ -3,7 +3,7 @@ from aiogram import Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 
-from config import ADMIN_ID
+from config import ADMIN_ID, ADMIN_IDS
 from handlers.client_portal import (
     get_admin_keyboard_with_portal,
     send_client_menu,
@@ -19,7 +19,7 @@ router = Router()
 
 
 async def notify_admin_new_user(bot, message: Message, is_new: bool) -> None:
-    if not ADMIN_ID or not message.from_user:
+    if not ADMIN_IDS or not message.from_user:
         return
     uid = message.from_user.id
     full_name = escape(message.from_user.full_name or "—")
@@ -35,7 +35,8 @@ async def notify_admin_new_user(bot, message: Message, is_new: bool) -> None:
         "Добавьте его в настройках клиента — доступ откроется автоматически."
     )
     try:
-        await bot.send_message(chat_id=int(ADMIN_ID), text=text, parse_mode="HTML")
+        for admin_chat_id in ADMIN_IDS:
+            await bot.send_message(chat_id=int(admin_chat_id), text=text, parse_mode="HTML")
     except Exception:
         pass
 

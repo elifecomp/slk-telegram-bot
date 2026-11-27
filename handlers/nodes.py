@@ -1,7 +1,7 @@
 import logging
 from aiogram import Router, F
 from aiogram.types import Message
-from config import ADMIN_ID
+from config import ADMIN_ID, ADMIN_IDS
 from services.nodes_service import get_nodes_report
 
 router = Router()
@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 @router.message(F.text == "Узлы")
 async def handle_nodes(message: Message):
-    if message.from_user.id != ADMIN_ID:
+    if message.from_user.id not in ADMIN_IDS:
         return
 
     wait_msg = await message.answer("⏳ Запрашиваю список узлов из панели...")

@@ -3,7 +3,7 @@ from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery
-from config import ADMIN_ID
+from config import ADMIN_ID, ADMIN_IDS
 from keyboards.clients_kb import (
     build_cancel_input_keyboard,
     build_client_actions_keyboard,
@@ -32,7 +32,7 @@ class ClientEditStates(StatesGroup):
 
 @router.message(F.text == "Клиенты")
 async def handle_clients_menu(message: Message, state: FSMContext):
-    if message.from_user.id != ADMIN_ID:
+    if message.from_user.id not in ADMIN_IDS:
         return
     await state.clear()
 
@@ -47,7 +47,7 @@ async def handle_clients_menu(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.startswith("cl_back_ib:"))
 async def handle_back_to_inbounds(callback: CallbackQuery, state: FSMContext):
-    if callback.from_user.id != ADMIN_ID:
+    if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("Доступ запрещён", show_alert=True)
         return
     await state.clear()
@@ -59,7 +59,7 @@ async def handle_back_to_inbounds(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("cl_ib:"))
 async def handle_select_inbound(callback: CallbackQuery, state: FSMContext):
-    if callback.from_user.id != ADMIN_ID:
+    if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("Доступ запрещён", show_alert=True)
         return
     await state.clear()
@@ -78,7 +78,7 @@ async def handle_select_inbound(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("cl_vw:"))
 async def handle_view_client(callback: CallbackQuery, state: FSMContext):
-    if callback.from_user.id != ADMIN_ID:
+    if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("Доступ запрещён", show_alert=True)
         return
     await state.clear()
@@ -108,7 +108,7 @@ async def handle_view_client(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("cl_rst:"))
 async def handle_reset_traffic(callback: CallbackQuery):
-    if callback.from_user.id != ADMIN_ID:
+    if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("Доступ запрещён", show_alert=True)
         return
 
@@ -138,7 +138,7 @@ async def handle_reset_traffic(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("cl_off:"))
 async def handle_disable_client(callback: CallbackQuery):
-    if callback.from_user.id != ADMIN_ID:
+    if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("Доступ запрещён", show_alert=True)
         return
 
@@ -169,7 +169,7 @@ async def handle_disable_client(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("cl_on:"))
 async def handle_enable_client(callback: CallbackQuery):
-    if callback.from_user.id != ADMIN_ID:
+    if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("Доступ запрещён", show_alert=True)
         return
 
@@ -200,7 +200,7 @@ async def handle_enable_client(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("cl_ren:"))
 async def handle_ask_rename(callback: CallbackQuery, state: FSMContext):
-    if callback.from_user.id != ADMIN_ID:
+    if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("Доступ запрещён", show_alert=True)
         return
 
@@ -227,7 +227,7 @@ async def handle_ask_rename(callback: CallbackQuery, state: FSMContext):
 
 @router.message(ClientEditStates.waiting_new_name)
 async def handle_save_rename(message: Message, state: FSMContext):
-    if message.from_user.id != ADMIN_ID:
+    if message.from_user.id not in ADMIN_IDS:
         return
 
     data = await state.get_data()
@@ -262,7 +262,7 @@ async def handle_save_rename(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.startswith("cl_gb:"))
 async def handle_ask_gb(callback: CallbackQuery, state: FSMContext):
-    if callback.from_user.id != ADMIN_ID:
+    if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("Доступ запрещён", show_alert=True)
         return
 
@@ -289,7 +289,7 @@ async def handle_ask_gb(callback: CallbackQuery, state: FSMContext):
 
 @router.message(ClientEditStates.waiting_new_gb)
 async def handle_save_gb(message: Message, state: FSMContext):
-    if message.from_user.id != ADMIN_ID:
+    if message.from_user.id not in ADMIN_IDS:
         return
 
     data = await state.get_data()
