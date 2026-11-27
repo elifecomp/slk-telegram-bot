@@ -280,3 +280,161 @@ def mark_access_notified(telegram_id: int | str, notified: bool = True) -> None:
             (tg_int, 1 if notified else 0),
         )
         conn.commit()
+
+
+def ensure_manual_access_table() -> None:
+    db_path = resolve_clients_db_path()
+    if not os.path.exists(db_path):
+        return
+    with _connect() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS manual_allowed_users (
+                telegram_id INTEGER PRIMARY KEY,
+                granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        conn.commit()
+
+
+def has_manual_user_access(telegram_id: int | str | None) -> bool:
+    if telegram_id is None:
+        return False
+    try:
+        tg_int = int(telegram_id)
+    except (TypeError, ValueError):
+        return False
+    db_path = resolve_clients_db_path()
+    if not os.path.exists(db_path):
+        return False
+    ensure_manual_access_table()
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM manual_allowed_users WHERE telegram_id = ? LIMIT 1",
+            (tg_int,),
+        ).fetchone()
+        return row is not None
+
+
+def grant_manual_user_access(
+    telegram_id: int | str,
+    name: str | None = None,
+    username: str | None = None,
+) -> tuple[dict[str, Any] | None, bool]:
+    client_row, is_new = ensure_client_registered(
+        telegram_id=telegram_id,
+        name=name,
+        username=username,
+    )
+    try:
+        tg_int = int(telegram_id)
+    except (TypeError, ValueError):
+        return client_row, is_new
+
+    db_path = resolve_clients_db_path()
+    if not os.path.exists(db_path):
+        return client_row, is_new
+
+    ensure_manual_access_table()
+    ensure_access_tracking_table()
+    with _connect() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO manual_allowed_users (telegram_id) VALUES (?)",
+            (tg_int,),
+        )
+        conn.execute(
+            "INSERT OR REPLACE INTO client_access_notify (telegram_id, access_notified) VALUES (?, 1)",
+            (tg_int,),
+        )
+        if name and name.strip():
+            conn.execute(
+                "UPDATE clients SET name = ?, is_active = 1 WHERE telegram_id = ?",
+                (name.strip()[:100], tg_int),
+            )
+        else:
+            conn.execute(
+                "UPDATE clients SET is_active = 1 WHERE telegram_id = ?",
+                (tg_int,),
+            )
+        if username and username.strip():
+            clean_un = username.strip().lstrip("@")
+            if clean_un:
+                existing_login = conn.execute(
+                    "SELECT login FROM clients WHERE telegram_id = ? LIMIT 1",
+                    (tg_int,),
+                ).fetchone()
+                cur_login = str(existing_login["login"] or "") if existing_login else ""
+                if not cur_login or cur_login.startswith("tg_"):
+                    candidate = clean_un
+                    suffix = 1
+                    while conn.execute(
+                        "SELECT 1 FROM clients WHERE login = ? AND telegram_id != ? LIMIT 1",
+                        (candidate, tg_int),
+                    ).fetchone():
+                        candidate = f"{clean_un}_{tg_int}_{suffix}"
+                        suffix += 1
+                    conn.execute(
+                        "UPDATE clients SET login = ? WHERE telegram_id = ?",
+                        (candidate, tg_int),
+                    )
+        conn.commit()
+        updated = conn.execute(
+            """
+            SELECT id, telegram_id, login, phone, name, registration_date, is_active, login2, birthday, hwid, city
+            FROM clients
+            WHERE telegram_id = ?
+            LIMIT 1
+            """,
+            (tg_int,),
+        ).fetchone()
+        return (dict(updated) if updated else client_row), is_new
+
+
+def sync_client_profile_from_tg(
+    telegram_id: int | str,
+    full_name: str | None = None,
+    username: str | None = None,
+) -> dict[str, Any] | None:
+    try:
+        tg_int = int(telegram_id)
+    except (TypeError, ValueError):
+        return None
+    db_path = resolve_clients_db_path()
+    if not os.path.exists(db_path):
+        return None
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT id, name, login FROM clients WHERE telegram_id = ? LIMIT 1",
+            (tg_int,),
+        ).fetchone()
+        if not row:
+            return None
+        cur_name = str(row["name"] or "").strip()
+        cur_login = str(row["login"] or "").strip()
+        if full_name and full_name.strip() and (not cur_name or cur_name.startswith("User ")):
+            conn.execute(
+                "UPDATE clients SET name = ? WHERE telegram_id = ?",
+                (full_name.strip()[:100], tg_int),
+            )
+        if username and username.strip() and (not cur_login or cur_login.startswith("tg_")):
+            clean_un = username.strip().lstrip("@")
+            if clean_un and not conn.execute(
+                "SELECT 1 FROM clients WHERE login = ? AND telegram_id != ? LIMIT 1",
+                (clean_un, tg_int),
+            ).fetchone():
+                conn.execute(
+                    "UPDATE clients SET login = ? WHERE telegram_id = ?",
+                    (clean_un, tg_int),
+                )
+        conn.commit()
+        updated = conn.execute(
+            """
+            SELECT id, telegram_id, login, phone, name, registration_date, is_active, login2, birthday, hwid, city
+            FROM clients
+            WHERE telegram_id = ?
+            LIMIT 1
+            """,
+            (tg_int,),
+        ).fetchone()
+        return dict(updated) if updated else None

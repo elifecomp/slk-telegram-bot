@@ -10,8 +10,10 @@ from handlers.client_portal import (
 )
 from services.clients_db import (
     ensure_client_registered,
+    has_manual_user_access,
     is_admin_user,
     mark_access_notified,
+    sync_client_profile_from_tg,
 )
 from services.panel_tg_access import has_panel_access
 
@@ -59,9 +61,16 @@ async def cmd_start(message: Message):
         name=message.from_user.full_name,
         username=message.from_user.username,
     )
+    synced = sync_client_profile_from_tg(
+        telegram_id=uid,
+        full_name=message.from_user.full_name,
+        username=message.from_user.username,
+    )
+    if synced:
+        client_row = synced
     client_name = str((client_row or {}).get("name") or message.from_user.full_name or "Клиент").strip()
 
-    if await has_panel_access(uid, force_refresh=True):
+    if has_manual_user_access(uid) or await has_panel_access(uid, force_refresh=True):
         mark_access_notified(uid, notified=True)
         await send_client_menu(message, client_name=client_name, is_preview=False)
         return

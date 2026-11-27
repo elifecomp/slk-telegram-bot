@@ -8,6 +8,7 @@ from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     KeyboardButton,
+    KeyboardButtonRequestUsers,
     Message,
     ReplyKeyboardMarkup,
 )
@@ -15,6 +16,7 @@ from aiogram.types import (
 from keyboards.main_kb import get_main_keyboard
 from services.clients_db import (
     get_client_by_id,
+    grant_manual_user_access,
     get_client_by_tg_id,
     is_admin_user,
     list_clients,
@@ -25,6 +27,8 @@ router = Router(name="client_portal")
 
 BTN_CLIENT_PANEL = "👤 Панель клиента"
 BTN_USERS_LIST = "👥 Пользователи"
+BTN_ADD_USER_TG = "➕ Добавить пользователя по ТГ"
+REQUEST_ADD_USER_ID = 3101
 BTN_MY_SUB = "📡 Моя подписка"
 BTN_APP = "📱 Приложение"
 BTN_BACK_ADMIN = "⬅️ В админ-панель"
@@ -43,6 +47,27 @@ class EditClientState(StatesGroup):
 
 def get_admin_keyboard_with_portal() -> ReplyKeyboardMarkup:
     return get_main_keyboard()
+
+
+def get_users_manage_reply_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(
+                    text=BTN_ADD_USER_TG,
+                    request_users=KeyboardButtonRequestUsers(
+                        request_id=REQUEST_ADD_USER_ID,
+                        user_is_bot=False,
+                        max_quantity=1,
+                        request_name=True,
+                        request_username=True,
+                    ),
+                )
+            ],
+            [KeyboardButton(text=BTN_BACK_ADMIN)],
+        ],
+        resize_keyboard=True,
+    )
 
 
 def get_client_reply_keyboard(include_back_admin: bool = False) -> ReplyKeyboardMarkup:
@@ -269,7 +294,9 @@ async def open_users_inline_list(message: Message, state: FSMContext) -> None:
         await message.answer(
             "👥 <b>ПОЛЬЗОВАТЕЛИ</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "В базе <code>clients.db</code> пока нет пользователей.",
+            "В базе <code>clients.db</code> пока нет пользователей.\n\n"
+            "Нажмите <b>«➕ Добавить пользователя по ТГ»</b> на клавиатуре ниже, чтобы выбрать контакт.",
+            reply_markup=get_users_manage_reply_keyboard(),
             parse_mode="HTML",
         )
         return
@@ -277,10 +304,63 @@ async def open_users_inline_list(message: Message, state: FSMContext) -> None:
     await message.answer(
         f"👥 <b>ПОЛЬЗОВАТЕЛИ</b> (<code>{len(users)}</code>)\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "Выберите пользователя:",
+        "Выберите пользователя из списка или нажмите <b>«➕ Добавить пользователя по ТГ»</b> ниже:",
         reply_markup=build_users_inline_keyboard(users),
         parse_mode="HTML",
     )
+    await message.answer(
+        "👇 Управление пользователями:",
+        reply_markup=get_users_manage_reply_keyboard(),
+    )
+
+
+@router.message(F.users_shared)
+async def on_users_shared_add_client(message: Message, state: FSMContext) -> None:
+    if not is_admin_user(message.from_user.id if message.from_user else None):
+        return
+    shared = message.users_shared
+    if not shared or shared.request_id != REQUEST_ADD_USER_ID or not shared.users:
+        return
+
+    await state.clear()
+    picked = shared.users[0]
+    target_tg_id = int(picked.user_id)
+    first_name = getattr(picked, "first_name", None) or ""
+    last_name = getattr(picked, "last_name", None) or ""
+    full_name = " ".join(p for p in (first_name.strip(), last_name.strip()) if p).strip() or None
+    username = getattr(picked, "username", None)
+
+    client_row, is_new = grant_manual_user_access(
+        telegram_id=target_tg_id,
+        name=full_name,
+        username=username,
+    )
+    saved_name = escape(str((client_row or {}).get("name") or full_name or f"User {target_tg_id}"))
+    saved_login = escape(str((client_row or {}).get("login") or (f"@{username}" if username else f"tg_{target_tg_id}")))
+    status_title = "✅ <b>ПОЛЬЗОВАТЕЛЬ ДОБАВЛЕН</b>" if is_new else "✅ <b>ДОСТУП ОБНОВЛЁН</b>"
+
+    await message.answer(
+        f"{status_title}\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"• Имя: <b>{saved_name}</b>\n"
+        f"• Логин: <code>{saved_login}</code>\n"
+        f"• Telegram ID: <code>{target_tg_id}</code>\n\n"
+        "Данные сохранены в <code>clients.db</code>. "
+        "Когда пользователь зайдёт в бот и нажмёт <code>/start</code>, "
+        "он сразу получит доступ в личный кабинет.",
+        reply_markup=get_users_manage_reply_keyboard(),
+        parse_mode="HTML",
+    )
+
+    users = list_clients()
+    if users:
+        await message.answer(
+            f"👥 <b>ПОЛЬЗОВАТЕЛИ</b> (<code>{len(users)}</code>)\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "Обновлённый список пользователей:",
+            reply_markup=build_users_inline_keyboard(users),
+            parse_mode="HTML",
+        )
 
 
 @router.callback_query(F.data == "portal_users_back")
