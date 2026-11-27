@@ -32,6 +32,32 @@ def resolve_clients_db_path() -> str:
     return "/opt/SLK_BOT_3X-UI/clients.db"
 
 
+def ensure_clients_table() -> None:
+    db_path = resolve_clients_db_path()
+    parent = os.path.dirname(db_path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with _connect() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS clients (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                telegram_id INTEGER UNIQUE,
+                login TEXT UNIQUE,
+                phone TEXT DEFAULT '',
+                name TEXT DEFAULT '',
+                registration_date TEXT DEFAULT CURRENT_TIMESTAMP,
+                is_active INTEGER DEFAULT 1,
+                login2 TEXT DEFAULT '',
+                birthday TEXT DEFAULT '',
+                hwid TEXT DEFAULT '',
+                city TEXT DEFAULT ''
+            )
+            """
+        )
+        conn.commit()
+
+
 def _connect() -> sqlite3.Connection:
     db_path = resolve_clients_db_path()
     conn = sqlite3.connect(db_path)
@@ -51,6 +77,7 @@ def get_client_by_tg_id(telegram_id: int | str | None) -> dict[str, Any] | None:
     if not os.path.exists(db_path):
         return None
 
+    ensure_clients_table()
     with _connect() as conn:
         row = conn.execute(
             """
@@ -69,6 +96,7 @@ def list_clients(limit: int = 100) -> list[dict[str, Any]]:
     if not os.path.exists(db_path):
         return []
 
+    ensure_clients_table()
     with _connect() as conn:
         rows = conn.execute(
             """
@@ -92,6 +120,7 @@ def get_client_by_id(client_id: int | str) -> dict[str, Any] | None:
     if not os.path.exists(db_path):
         return None
 
+    ensure_clients_table()
     with _connect() as conn:
         row = conn.execute(
             """
@@ -187,6 +216,7 @@ def ensure_client_registered(
     if not os.path.exists(db_path):
         return None, False
 
+    ensure_clients_table()
     ensure_access_tracking_table()
     display_name = (name or username or f"User {tg_int}").strip()[:100]
     base_login = (username or f"tg_{tg_int}").strip() or f"tg_{tg_int}"
