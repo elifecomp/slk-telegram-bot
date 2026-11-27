@@ -48,3 +48,11 @@ class Panel3XUIClient:
                 resp.raise_for_status()
                 data = await resp.json(content_type=None)
                 return resp.status, data
+
+    async def get_raw_bytes(self, endpoint: str) -> bytes:
+        url = f"{self.base_url}/panel/api{endpoint}"
+        headers = {k: v for k, v in self._headers().items() if k.lower() != "content-type"}
+        async with aiohttp.ClientSession(timeout=self.timeout) as session:
+            async with session.get(url, headers=headers) as resp:
+                resp.raise_for_status()
+                return await resp.read()

@@ -6,6 +6,7 @@ from handlers import get_main_router
 from handlers.client_portal import get_client_reply_keyboard
 from services.clients_db import list_unnotified_clients, mark_access_notified
 from services.panel_tg_access import get_panel_tg_ids
+from services.panel_backup import daily_backup_loop
 
 
 async def watch_panel_access_loop(bot: Bot, interval_seconds: int = 30) -> None:
@@ -62,12 +63,14 @@ async def main():
     dp.include_router(get_main_router())
 
     watcher_task = asyncio.create_task(watch_panel_access_loop(bot, interval_seconds=30))
+    backup_task = asyncio.create_task(daily_backup_loop(bot))
     try:
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot)
     finally:
         watcher_task.cancel()
-        await asyncio.gather(watcher_task, return_exceptions=True)
+        backup_task.cancel()
+        await asyncio.gather(watcher_task, backup_task, return_exceptions=True)
 
 
 if __name__ == "__main__":
