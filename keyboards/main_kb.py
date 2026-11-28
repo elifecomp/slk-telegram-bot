@@ -18,6 +18,7 @@ def get_main_keyboard() -> ReplyKeyboardMarkup:
         [
             KeyboardButton(text="Хосты"),
             KeyboardButton(text="Панель клиента"),
+            KeyboardButton(text="📋 Техпаспорт"),
         ],
     ]
     return ReplyKeyboardMarkup(

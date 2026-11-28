@@ -5,6 +5,7 @@ from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import (
+    BufferedInputFile,
     FSInputFile,
     CallbackQuery,
     InlineKeyboardButton,
@@ -38,6 +39,7 @@ BTN_APP = "📱 Приложение"
 BTN_TARIFFS = "💳 Тарифы"
 BTN_BACK_ADMIN = "⬅️ В админ-панель"
 BTN_BROADCAST = "📣 Рассылка"
+BTN_TECH_PASSPORT = "📋 Техпаспорт"
 
 FIELD_LABELS = {
     "name": "имя",
@@ -1022,6 +1024,22 @@ async def _build_subscription_text(uid: int, client_row: dict | None) -> str:
     return "\n".join(lines)
 
 
+def _build_my_sub_keyboard(tg_id: int) -> InlineKeyboardMarkup:
+    from services.daily_summary_watcher import is_daily_summary_enabled
+
+    enabled = is_daily_summary_enabled(tg_id)
+    btn_text = (
+        "🔔 Утренняя сводка: Вкл"
+        if enabled
+        else "🔕 Утренняя сводка: Выкл"
+    )
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=btn_text, callback_data="sub_daily_notify:toggle")]
+        ]
+    )
+
+
 @router.message(F.text == BTN_MY_SUB)
 async def stub_my_subscription(message: Message) -> None:
     uid = message.from_user.id if message.from_user else None
@@ -1032,7 +1050,38 @@ async def stub_my_subscription(message: Message) -> None:
         return
 
     text = await _build_subscription_text(uid, client)
-    await message.answer(text, parse_mode="HTML")
+    await message.answer(
+        text,
+        reply_markup=_build_my_sub_keyboard(uid),
+        parse_mode="HTML",
+    )
+
+
+@router.callback_query(F.data == "sub_daily_notify:toggle")
+async def toggle_my_sub_daily_notify(callback: CallbackQuery) -> None:
+    from services.daily_summary_watcher import is_daily_summary_enabled, set_daily_summary_enabled
+
+    uid = callback.from_user.id if callback.from_user else None
+    if uid is None:
+        await callback.answer()
+        return
+    client = get_client_by_tg_id(uid)
+    if not client and not is_admin_user(uid):
+        await callback.answer("Недостаточно прав", show_alert=True)
+        return
+
+    new_state = not is_daily_summary_enabled(uid)
+    set_daily_summary_enabled(uid, new_state)
+    await callback.answer(
+        "Утренняя сводка в 08:00 МСК включена"
+        if new_state
+        else "Утренняя сводка отключена"
+    )
+    if callback.message:
+        try:
+            await callback.message.edit_reply_markup(reply_markup=_build_my_sub_keyboard(uid))
+        except Exception:
+            pass
 
 
 def build_app_platform_keyboard() -> InlineKeyboardMarkup:
@@ -1209,15 +1258,97 @@ async def _send_broadcast_card(bot, chat_id: int, src_chat_id: int, src_message_
         )
 
 
-def _broadcast_confirm_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
+def _collect_broadcast_candidates() -> list[tuple[int, str]]:
+    seen: set[int] = set()
+    candidates: list[tuple[int, str]] = []
+    for row in list_clients(limit=100000):
+        raw_id = row.get("telegram_id")
+        if raw_id is None:
+            continue
+        try:
+            uid = int(raw_id)
+        except (TypeError, ValueError):
+            continue
+        if uid <= 0 or uid in seen:
+            continue
+        seen.add(uid)
+        label_name = str(row.get("name") or row.get("login") or f"ID {uid}").strip()
+        candidates.append((uid, label_name))
+    return candidates
+
+
+def _build_broadcast_picker_keyboard(
+    candidates: list[tuple[int, str]],
+    selected_ids: set[int],
+    page: int = 0,
+    page_size: int = 8,
+) -> InlineKeyboardMarkup:
+    total = len(candidates)
+    max_page = max(0, (total - 1) // page_size)
+    page = max(0, min(page, max_page))
+    chunk = candidates[page * page_size : (page + 1) * page_size]
+
+    rows: list[list[InlineKeyboardButton]] = []
+    for uid, label_name in chunk:
+        mark = "[x]" if uid in selected_ids else "[ ]"
+        short_name = label_name[:28]
+        rows.append(
             [
-                InlineKeyboardButton(text="✅ Отправить всем", callback_data="bcast:send"),
-                InlineKeyboardButton(text="❌ Отмена", callback_data="bcast:cancel"),
+                InlineKeyboardButton(
+                    text=f"{mark} {short_name} ({uid})",
+                    callback_data=f"bcast:tog:{uid}:{page}",
+                )
             ]
+        )
+
+    rows.append(
+        [
+            InlineKeyboardButton(text="Выбрать всех", callback_data=f"bcast:all:{page}"),
+            InlineKeyboardButton(text="Снять всех", callback_data=f"bcast:none:{page}"),
         ]
     )
+
+    if max_page > 0:
+        nav_row: list[InlineKeyboardButton] = []
+        if page > 0:
+            nav_row.append(InlineKeyboardButton(text="Назад", callback_data=f"bcast:pg:{page - 1}"))
+        nav_row.append(InlineKeyboardButton(text=f"Стр. {page + 1}/{max_page + 1}", callback_data=f"bcast:pg:{page}"))
+        if page < max_page:
+            nav_row.append(InlineKeyboardButton(text="Далее", callback_data=f"bcast:pg:{page + 1}"))
+        rows.append(nav_row)
+
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text=f"Отправить выбранным ({len(selected_ids)})",
+                callback_data="bcast:send",
+            ),
+            InlineKeyboardButton(text="Отмена", callback_data="bcast:cancel"),
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def _refresh_broadcast_picker(callback: CallbackQuery, state: FSMContext, page: int = 0) -> None:
+    data = await state.get_data()
+    candidates = _collect_broadcast_candidates()
+    valid_uids = {uid for uid, _ in candidates}
+    raw_selected = data.get("bcast_selected_ids")
+    if isinstance(raw_selected, list):
+        selected_ids = {int(x) for x in raw_selected if int(x) in valid_uids}
+    else:
+        selected_ids = set(valid_uids)
+
+    await state.update_data(bcast_selected_ids=sorted(selected_ids))
+    kb = _build_broadcast_picker_keyboard(candidates, selected_ids, page=page)
+    text = (
+        f"Выберите получателей из базы (отмечено: <b>{len(selected_ids)}</b> из <b>{len(candidates)}</b>):"
+    )
+    if callback.message:
+        try:
+            await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+        except Exception:
+            await callback.message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 
 @router.message(F.text == BTN_BROADCAST)
@@ -1227,11 +1358,11 @@ async def start_broadcast(message: Message, state: FSMContext) -> None:
         return
     await state.clear()
     await state.set_state(BroadcastState.waiting_message)
-    recipients = _collect_broadcast_recipients()
+    candidates = _collect_broadcast_candidates()
     prompt = (
         "📣 <b>РАССЫЛКА ПОЛЬЗОВАТЕЛЯМ</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        f"Получателей в базе: <b>{len(recipients)}</b>\n\n"
+        f"Клиентов с Telegram ID в базе: <b>{len(candidates)}</b>\n\n"
         "Отправьте одно сообщение для рассылки: текст, фото, видео или файл/документ "
         "(до 50 МБ — как в обычном чате Telegram).\n"
         "Для отмены нажмите кнопку «⬅️ В админ-панель»."
@@ -1266,21 +1397,24 @@ async def receive_broadcast_message(message: Message, state: FSMContext) -> None
         if message.from_user and message.from_user.full_name
         else "Администрация SLK"
     )
+    candidates = _collect_broadcast_candidates()
+    selected_ids = [u for u, _ in candidates]
+
     await state.update_data(
         bcast_chat_id=message.chat.id,
         bcast_message_id=message.message_id,
         bcast_body=raw_body,
         bcast_has_media=has_media,
         bcast_sender_label=sender_label,
+        bcast_selected_ids=selected_ids,
     )
     await state.set_state(BroadcastState.confirm_send)
 
-    recipients_count = len(_collect_broadcast_recipients())
     preview_header = (
         "👁 <b>ПРЕДПРОСМОТР РАССЫЛКИ</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        f"Получателей в базе: <b>{recipients_count}</b>\n"
-        "Ниже показана карточка, которая придёт пользователям:"
+        f"Клиентов в базе: <b>{len(candidates)}</b>\n"
+        "Ниже показана карточка, которая придёт выбранным пользователям:"
     )
     await message.answer(preview_header, parse_mode="HTML")
     try:
@@ -1302,10 +1436,85 @@ async def receive_broadcast_message(message: Message, state: FSMContext) -> None
         )
         return
 
+    kb = _build_broadcast_picker_keyboard(candidates, set(selected_ids), page=0)
     await message.answer(
-        "Подтвердите отправку рассылки:",
-        reply_markup=_broadcast_confirm_keyboard(),
+        f"Выберите получателей из базы (отмечено: <b>{len(selected_ids)}</b> из <b>{len(candidates)}</b>):",
+        reply_markup=kb,
+        parse_mode="HTML",
     )
+
+
+@router.callback_query(BroadcastState.confirm_send, F.data.startswith("bcast:tog:"))
+async def toggle_broadcast_recipient(callback: CallbackQuery, state: FSMContext) -> None:
+    uid = callback.from_user.id if callback.from_user else None
+    if not is_admin_user(uid):
+        await callback.answer("Недостаточно прав", show_alert=True)
+        return
+
+    parts = (callback.data or "").split(":")
+    if len(parts) < 4:
+        await callback.answer()
+        return
+
+    try:
+        target_uid = int(parts[2])
+        page = int(parts[3])
+    except ValueError:
+        await callback.answer()
+        return
+
+    data = await state.get_data()
+    selected = {int(x) for x in (data.get("bcast_selected_ids") or [])}
+    if target_uid in selected:
+        selected.remove(target_uid)
+    else:
+        selected.add(target_uid)
+
+    await state.update_data(bcast_selected_ids=sorted(selected))
+    await callback.answer()
+    await _refresh_broadcast_picker(callback, state, page=page)
+
+
+@router.callback_query(BroadcastState.confirm_send, F.data.startswith("bcast:all:"))
+async def select_all_broadcast_recipients(callback: CallbackQuery, state: FSMContext) -> None:
+    uid = callback.from_user.id if callback.from_user else None
+    if not is_admin_user(uid):
+        await callback.answer("Недостаточно прав", show_alert=True)
+        return
+
+    parts = (callback.data or "").split(":")
+    page = int(parts[2]) if len(parts) >= 3 and parts[2].isdigit() else 0
+    all_uids = [u for u, _ in _collect_broadcast_candidates()]
+    await state.update_data(bcast_selected_ids=all_uids)
+    await callback.answer(f"Выбрано: {len(all_uids)}")
+    await _refresh_broadcast_picker(callback, state, page=page)
+
+
+@router.callback_query(BroadcastState.confirm_send, F.data.startswith("bcast:none:"))
+async def clear_all_broadcast_recipients(callback: CallbackQuery, state: FSMContext) -> None:
+    uid = callback.from_user.id if callback.from_user else None
+    if not is_admin_user(uid):
+        await callback.answer("Недостаточно прав", show_alert=True)
+        return
+
+    parts = (callback.data or "").split(":")
+    page = int(parts[2]) if len(parts) >= 3 and parts[2].isdigit() else 0
+    await state.update_data(bcast_selected_ids=[])
+    await callback.answer("Выбор снят")
+    await _refresh_broadcast_picker(callback, state, page=page)
+
+
+@router.callback_query(BroadcastState.confirm_send, F.data.startswith("bcast:pg:"))
+async def paginate_broadcast_recipients(callback: CallbackQuery, state: FSMContext) -> None:
+    uid = callback.from_user.id if callback.from_user else None
+    if not is_admin_user(uid):
+        await callback.answer("Недостаточно прав", show_alert=True)
+        return
+
+    parts = (callback.data or "").split(":")
+    page = int(parts[2]) if len(parts) >= 3 and parts[2].isdigit() else 0
+    await callback.answer()
+    await _refresh_broadcast_picker(callback, state, page=page)
 
 
 @router.callback_query(BroadcastState.confirm_send, F.data == "bcast:cancel")
@@ -1336,10 +1545,11 @@ async def run_broadcast(callback: CallbackQuery, state: FSMContext) -> None:
     bcast_body = data.get("bcast_body", "")
     bcast_has_media = bool(data.get("bcast_has_media", False))
     bcast_sender_label = data.get("bcast_sender_label") or "Администрация SLK"
-    await state.clear()
-    await callback.answer("Запускаю рассылку...")
+    raw_selected = data.get("bcast_selected_ids")
 
     if not src_chat_id or not src_message_id or not callback.message:
+        await state.clear()
+        await callback.answer()
         if callback.message:
             await callback.message.answer(
                 "⚠️ Данные рассылки не найдены. Нажмите «📣 Рассылка» заново.",
@@ -1347,7 +1557,20 @@ async def run_broadcast(callback: CallbackQuery, state: FSMContext) -> None:
             )
         return
 
-    recipients = _collect_broadcast_recipients()
+    valid_uids = [u for u, _ in _collect_broadcast_candidates()]
+    valid_set = set(valid_uids)
+    if isinstance(raw_selected, list):
+        recipients = [int(x) for x in raw_selected if int(x) in valid_set]
+    else:
+        recipients = valid_uids
+
+    if not recipients:
+        await callback.answer("Не выбран ни один получатель", show_alert=True)
+        return
+
+    await state.clear()
+    await callback.answer("Запускаю рассылку...")
+
     sent_count = 0
     failed_count = 0
 
@@ -1385,7 +1608,7 @@ async def run_broadcast(callback: CallbackQuery, state: FSMContext) -> None:
     summary_text = (
         "📊 <b>РАССЫЛКА ЗАВЕРШЕНА</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        f"• Всего в базе: <b>{len(recipients)}</b>\n"
+        f"• Выбрано получателей: <b>{len(recipients)}</b>\n"
         f"• Доставлено: <b>{sent_count}</b>\n"
         f"• Не доставлено: <b>{failed_count}</b>"
     )
@@ -1630,3 +1853,24 @@ async def handle_tariff_decision(callback: CallbackQuery) -> None:
                 f"{base_text}\n\n❌ <b>Отказано</b>",
                 parse_mode="HTML",
             )
+
+
+@router.message(F.text == BTN_TECH_PASSPORT)
+async def show_tech_passport(message: Message) -> None:
+    uid = message.from_user.id if message.from_user else None
+    if uid is None or not is_admin_user(uid):
+        return
+
+    from services.tech_passport import build_tech_passport_messages, get_tech_passport_bytes
+
+    for part in build_tech_passport_messages():
+        await message.answer(part, parse_mode="HTML")
+
+    doc = BufferedInputFile(
+        get_tech_passport_bytes(),
+        filename="SLK_BOT_3X-UI_Tech_Passport.md",
+    )
+    await message.answer_document(
+        document=doc,
+        caption="📄 Полный технический паспорт бота SLK_BOT_3X-UI",
+    )

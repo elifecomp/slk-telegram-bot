@@ -12,6 +12,9 @@ from services.subscription_status_watcher import watch_subscription_status_loop
 from services.tariff_change_watcher import watch_tariff_change_loop
 from services.expiry_reminder_watcher import watch_expiry_reminder_loop
 from services.low_traffic_watcher import watch_low_traffic_loop
+from services.daily_summary_watcher import watch_daily_summary_loop
+from services.inbound_change_watcher import watch_inbound_change_loop
+from services.git_update_watcher import watch_git_update_loop
 
 
 async def watch_panel_access_loop(bot: Bot, interval_seconds: int = 30) -> None:
@@ -74,6 +77,9 @@ async def main():
     tariff_task = asyncio.create_task(watch_tariff_change_loop(bot, interval_seconds=60))
     expiry_task = asyncio.create_task(watch_expiry_reminder_loop(bot, interval_seconds=300))
     low_traffic_task = asyncio.create_task(watch_low_traffic_loop(bot, interval_seconds=60))
+    daily_summary_task = asyncio.create_task(watch_daily_summary_loop(bot, poll_seconds=30))
+    inbound_change_task = asyncio.create_task(watch_inbound_change_loop(bot, interval_seconds=60))
+    git_update_task = asyncio.create_task(watch_git_update_loop(bot, poll_seconds=120))
     try:
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot)
@@ -85,6 +91,9 @@ async def main():
         tariff_task.cancel()
         expiry_task.cancel()
         low_traffic_task.cancel()
+        daily_summary_task.cancel()
+        inbound_change_task.cancel()
+        git_update_task.cancel()
         await asyncio.gather(watcher_task, backup_task,
             traffic_task,
             sub_status_task,

@@ -139,3 +139,84 @@ async def update_client_fields_api(
     if data.get("success", False):
         return True, data.get("msg") or "обновлено"
     return False, str(data.get("msg") or "ошибка обновления клиента")
+
+
+
+async def add_client_to_inbounds_api(
+    email: str,
+    inbound_ids: list[int],
+    total_gb_bytes: int | None = None,
+) -> tuple[list[int], list[str]]:
+    """Добавляет клиента (email) в указанные inbound_id через обновление settings инбаунда (/inbounds/update/{id}).
+    Возвращает (список_успешно_добавленных_или_уже_присутствующих_id, список_ошибок).
+    """
+    raw_client, _ = await get_raw_client_and_inbound(email)
+    if not raw_client:
+        return [], [f"{email}: клиент не найден в панели"]
+
+    client = Panel3XUIClient()
+    inbounds_resp = await client.get_api("/inbounds/list")
+    if not inbounds_resp.get("success") or not isinstance(inbounds_resp.get("obj"), list):
+        return [], ["не удалось получить список инбаундов"]
+
+    by_id: dict[int, dict] = {}
+    for ib in inbounds_resp["obj"]:
+        if isinstance(ib, dict) and ib.get("id") is not None:
+            try:
+                by_id[int(ib["id"])] = ib
+            except (TypeError, ValueError):
+                pass
+
+    added_ids: list[int] = []
+    errors: list[str] = []
+
+    for ib_id in inbound_ids:
+        ib = by_id.get(int(ib_id))
+        if not ib:
+            errors.append(f"ID {ib_id}: инбаунд не найден")
+            continue
+
+        settings_dict = _parse_json_dict(ib.get("settings"))
+        clients_list = settings_dict.get("clients")
+        if not isinstance(clients_list, list):
+            clients_list = []
+
+        already_exists = any(
+            isinstance(c, dict) and str(c.get("email") or "").strip() == email
+            for c in clients_list
+        )
+        if already_exists:
+            added_ids.append(int(ib_id))
+            continue
+
+        new_client = dict(raw_client)
+        new_client["email"] = email
+        new_client["enable"] = True
+        new_client["allowedIPs"] = _normalize_allowed_ips(new_client.get("allowedIPs"))
+        uuid_str = _extract_client_uuid_str(new_client)
+        if uuid_str:
+            new_client["id"] = uuid_str
+        new_client.pop("uuid", None)
+        if total_gb_bytes is not None:
+            new_client["totalGB"] = int(total_gb_bytes)
+
+        updated_clients = list(clients_list) + [new_client]
+        new_settings = dict(settings_dict)
+        new_settings["clients"] = updated_clients
+
+        inbound_payload = dict(ib)
+        inbound_payload.pop("clientStats", None)
+        inbound_payload["settings"] = json.dumps(new_settings, ensure_ascii=False, separators=(",", ":"))
+        for json_field in ("streamSettings", "sniffing"):
+            val = inbound_payload.get(json_field)
+            if isinstance(val, dict):
+                inbound_payload[json_field] = json.dumps(val, ensure_ascii=False, separators=(",", ":"))
+
+        status, data = await client.try_post_api(f"/inbounds/update/{int(ib_id)}", inbound_payload)
+        if status != 404 and isinstance(data, dict) and data.get("success", False):
+            added_ids.append(int(ib_id))
+        else:
+            msg = str((data or {}).get("msg") or f"HTTP {status}")
+            errors.append(f"ID {ib_id}: {msg}")
+
+    return added_ids, errors
